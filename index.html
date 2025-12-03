@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NotenManager Pro - Ultimate</title>
+    <title>NotenManager Pro - Ultimate V2</title>
     
     <!-- 1. Design & Core Libraries -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
@@ -16,31 +16,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <!-- 3. Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Outfit', 'sans-serif'],
-                        serif: ['Playfair Display', 'serif'],
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Space Grotesk"', 'sans-serif'],
+                        serif: ['"Playfair Display"', 'serif'],
                     },
                     colors: {
                         brand: {
-                            50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 900: '#1e3a8a',
+                            50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 900: '#0c4a6e',
                         },
                         accent: {
-                            500: '#8b5cf6', 600: '#7c3aed',
+                            500: '#6366f1', 600: '#4f46e5',
                         }
                     },
                     animation: {
-                        'fade-in': 'fadeIn 0.6s ease-out',
-                        'slide-up': 'slideUp 0.5s ease-out',
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.4s ease-out',
                     },
                     keyframes: {
                         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-                        slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+                        slideUp: { '0%': { transform: 'translateY(15px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
                     }
                 }
             }
@@ -48,22 +49,22 @@
     </script>
 
     <style>
-        body { background-color: #f8fafc; overflow-x: hidden; }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
+        body { background-color: #f1f5f9; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-        .gradient-text {
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
+        
+        /* A4 Aspect Ratio Fix for Screen */
+        .a4-preview {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -83,12 +84,17 @@
                 Layout: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></>,
                 FileText: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></>,
                 Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
-                MoreHorizontal: <><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>,
                 ChevronRight: <polyline points="9 18 15 12 9 6"/>,
                 TrendingUp: <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>,
                 Clock: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
                 Award: <><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></>,
-                Beaker: <><path d="M4.5 3h15"/><path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3"/><path d="M6 14h12"/></>
+                Beaker: <><path d="M4.5 3h15"/><path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3"/><path d="M6 14h12"/></>,
+                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+                Calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
+                PieChart: <path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/>,
+                Book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
+                X: <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+                Target: <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>
             };
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -97,40 +103,26 @@
             );
         };
 
-        // --- CHART ENGINE (Custom SVG with Bezier Curves) ---
         const ChartEngine = {
-            // Smooth curve algorithm (Catmull-Rom spline to Bezier conversion for SVG)
-            getSmoothPath: (points, height, width) => {
+            getSmoothPath: (points) => {
                 if (points.length === 0) return "";
-                if (points.length === 1) return `M 0 ${points[0].y} L ${width} ${points[0].y}`;
-
-                // Helper to get point coordinates
-                const p = (i) => {
-                    // Clamp index
-                    const idx = Math.max(0, Math.min(points.length - 1, i));
-                    return points[idx];
-                };
-
+                if (points.length === 1) return `M 0 ${points[0].y} L 100 ${points[0].y}`;
                 let d = `M ${points[0].x} ${points[0].y}`;
-
                 for (let i = 0; i < points.length - 1; i++) {
-                    const p0 = p(i - 1);
-                    const p1 = p(i);
-                    const p2 = p(i + 1);
-                    const p3 = p(i + 2);
-
+                    const p0 = points[i > 0 ? i - 1 : i];
+                    const p1 = points[i];
+                    const p2 = points[i + 1];
+                    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
                     const cp1x = p1.x + (p2.x - p0.x) / 6;
                     const cp1y = p1.y + (p2.y - p0.y) / 6;
                     const cp2x = p2.x - (p3.x - p1.x) / 6;
                     const cp2y = p2.y - (p3.y - p1.y) / 6;
-
                     d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
                 }
                 return d;
             }
         };
 
-        // --- CONSTANTS ---
         const GRADE_TYPES = [
             { type: 'Schulaufgabe', category: 'GL', label: 'Schulaufgabe' },
             { type: 'Kurzarbeit', category: 'KL', label: 'Kurzarbeit' },
@@ -141,29 +133,25 @@
             { type: 'Sonstiges', category: 'KL', label: 'Sonstiges' },
         ];
 
-        // --- LOGIC ---
         const calculateStats = (subject) => {
             const grades = subject.grades;
             const glGrades = grades.filter(g => g.category === 'GL');
             const klGrades = grades.filter(g => g.category === 'KL');
-
             const avg = (arr) => {
                 if (!arr.length) return null;
                 const sum = arr.reduce((acc, g) => acc + (g.value * g.weight), 0);
                 const w = arr.reduce((acc, g) => acc + g.weight, 0);
                 return w === 0 ? 0 : sum / w;
             };
-
             const glAvg = avg(glGrades);
             const klAvg = avg(klGrades);
             let final = null;
-
             if (subject.isCore) {
                 if (glAvg && klAvg) final = (glAvg * 2 + klAvg) / 3;
                 else if (glAvg) final = glAvg;
                 else if (klAvg) final = klAvg;
             } else {
-                final = avg(grades); // Alles zählt gleich im Nebenfach (bzw. ist KL)
+                final = avg(grades);
             }
             return { avg: final, glAvg, klAvg, count: grades.length };
         };
@@ -172,80 +160,133 @@
 
         // --- COMPONENTS ---
 
-        // 1. ADVANCED CHART COMPONENT
-        const AdvancedLineChart = ({ data, color = "#3b82f6", height = 200 }) => {
-            if (!data || data.length < 2) return <div className="flex items-center justify-center h-full text-gray-400 text-sm">Zu wenig Daten für Verlauf</div>;
-
-            const maxVal = 6;
-            const minVal = 1;
-            const padding = 20;
-            
-            // Normalize data to SVG coordinates
+        const CleanChart = ({ data, color = "#0ea5e9", height = 200 }) => {
+            if (!data || data.length < 2) return <div className="flex items-center justify-center h-full text-slate-400 text-sm font-medium bg-slate-50 rounded-xl">Zu wenig Daten für Verlauf</div>;
             const points = data.map((d, i) => ({
-                x: (i / (data.length - 1)) * 100, // 0 to 100
-                y: 100 - ((d.value - minVal) / (maxVal - minVal)) * 100 // 0 to 100 (inverted for SVG)
+                x: (i / (data.length - 1)) * 100,
+                y: 100 - ((d.value - 1) / 5) * 100 
             }));
-
-            // Scale to viewbox
-            const scaledPoints = points.map(p => ({
-                x: p.x, // x remains 0-100%
-                y: p.y  // y remains 0-100%
-            }));
-
-            const pathD = ChartEngine.getSmoothPath(scaledPoints, 100, 100);
+            const pathD = ChartEngine.getSmoothPath(points);
             const areaD = `${pathD} L 100 100 L 0 100 Z`;
-
             return (
-                <div className="w-full relative" style={{ height: `${height}px` }}>
-                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                <div className="w-full relative overflow-hidden rounded-xl bg-white" style={{ height: `${height}px` }}>
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
                         <defs>
                             <linearGradient id={`grad-${color}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+                                <stop offset="0%" stopColor={color} stopOpacity="0.2" />
                                 <stop offset="100%" stopColor={color} stopOpacity="0" />
                             </linearGradient>
                         </defs>
-                        {/* Grid Lines */}
                         {[1, 2, 3, 4, 5, 6].map(n => {
                             const y = 100 - ((n - 1) / 5) * 100;
                             return <line key={n} x1="0" y1={y} x2="100" y2={y} stroke="#f1f5f9" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />;
                         })}
-                        
-                        {/* Area */}
                         <path d={areaD} fill={`url(#grad-${color})`} />
-                        
-                        {/* Line */}
                         <path d={pathD} fill="none" stroke={color} strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
-                        
-                        {/* Points */}
-                        {scaledPoints.map((p, i) => (
-                            <g key={i} className="group">
-                                <circle cx={p.x} cy={p.y} r="4" fill="white" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" className="transition-all duration-300 group-hover:r-6" />
-                                {/* Tooltip Logic via CSS */}
-                                <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                    <rect x={p.x - 15} y={p.y - 15} width="30" height="12" rx="2" fill="#1e293b" />
-                                    <text x={p.x} y={p.y - 7} textAnchor="middle" fill="white" fontSize="6" fontWeight="bold">{data[i].value.toFixed(2)}</text>
-                                </g>
-                            </g>
-                        ))}
                     </svg>
                 </div>
             );
         };
 
-        // 2. MAIN APP
+        const StatCard = ({ icon, title, value, sub, color = "bg-white" }) => (
+            <div className={`p-6 rounded-3xl shadow-sm border border-slate-100 ${color} flex flex-col justify-between card-hover`}>
+                <div className="flex justify-between items-start mb-4">
+                    <div className="p-3 bg-white/50 rounded-2xl backdrop-blur-sm shadow-sm">{icon}</div>
+                </div>
+                <div>
+                    <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</div>
+                    <div className="text-2xl font-display font-bold text-slate-800">{value}</div>
+                    {sub && <div className="text-xs text-slate-400 mt-1 font-medium">{sub}</div>}
+                </div>
+            </div>
+        );
+
+        // --- ADD GRADE MODAL ---
+        const AddGradeModal = ({ onClose, onSave, isSim }) => {
+            const [data, setData] = useState({ value: '1', trend: '', type: 'Schulaufgabe', category: 'GL', weight: '1', date: new Date().toISOString().split('T')[0] });
+            
+            const quickSelect = (type, cat, weight) => {
+                setData(prev => ({ ...prev, type, category: cat, weight: weight.toString() }));
+            };
+
+            return (
+                <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-slide-up relative overflow-hidden">
+                    <div className={`p-6 border-b flex justify-between items-center ${isSim ? 'bg-blue-50' : 'bg-slate-50'}`}>
+                        <h3 className="font-bold text-xl text-slate-800">{isSim ? 'Simulation' : 'Note eintragen'}</h3>
+                        <button onClick={onClose}><Icon name="X" className="text-slate-400 hover:text-slate-600"/></button>
+                    </div>
+                    
+                    <div className="p-6 space-y-6">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-3">Schnellauswahl</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button type="button" onClick={() => quickSelect('Schulaufgabe', 'GL', '1')} className={`p-3 rounded-xl border-2 text-left transition-all ${data.type === 'Schulaufgabe' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-100 hover:border-brand-200'}`}>
+                                    <div className="font-bold text-sm">Schulaufgabe</div>
+                                    <div className="text-xs opacity-70">Groß (GL)</div>
+                                </button>
+                                <button type="button" onClick={() => quickSelect('Ex', 'KL', '1')} className={`p-3 rounded-xl border-2 text-left transition-all ${data.type === 'Ex' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 hover:border-emerald-200'}`}>
+                                    <div className="font-bold text-sm">Stegreifaufgabe</div>
+                                    <div className="text-xs opacity-70">Klein (KL)</div>
+                                </button>
+                                <button type="button" onClick={() => quickSelect('Abfrage', 'KL', '1')} className={`p-3 rounded-xl border-2 text-left transition-all ${data.type === 'Abfrage' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-100 hover:border-amber-200'}`}>
+                                    <div className="font-bold text-sm">Abfrage</div>
+                                    <div className="text-xs opacity-70">Klein (KL)</div>
+                                </button>
+                                <button type="button" onClick={() => quickSelect('Unterrichtsbeitrag', 'KL', '1')} className={`p-3 rounded-xl border-2 text-left transition-all ${data.type === 'Unterrichtsbeitrag' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-slate-100 hover:border-purple-200'}`}>
+                                    <div className="font-bold text-sm">Mündlich</div>
+                                    <div className="text-xs opacity-70">Klein (KL)</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <hr className="border-slate-100"/>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Note</label>
+                                <div className="relative">
+                                    <select value={data.value} onChange={e=>setData({...data, value: e.target.value})} className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold text-lg appearance-none focus:ring-2 focus:ring-brand-500">
+                                        {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
+                                    </select>
+                                    <div className="absolute right-3 top-4 pointer-events-none text-slate-400"><Icon name="ChevronRight" size={14} className="rotate-90"/></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Tendenz</label>
+                                <div className="flex bg-slate-50 rounded-xl p-1">
+                                    {['-', '', '+'].map(t => (
+                                        <button key={t} onClick={() => setData({...data, trend: t})} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${data.trend === t ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}>
+                                            {t || 'Ø'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="text-xs text-slate-400 font-medium flex justify-between px-1">
+                            <span>Kategorie: <strong className="text-slate-600">{data.category}</strong></span>
+                            <span>Datum: <strong className="text-slate-600">{new Date(data.date).toLocaleDateString()}</strong></span>
+                        </div>
+
+                        <button onClick={() => onSave({...data, value: parseInt(data.value), weight: parseFloat(data.weight)})} className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-lg hover:opacity-90 transition-all ${isSim ? 'bg-blue-600 shadow-blue-200' : 'bg-slate-900 shadow-slate-300'}`}>
+                            {isSim ? 'Simulieren' : 'Speichern'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
         const GradeManager = () => {
-            // --- STATE ---
             const [subjects, setSubjects] = useState([]);
             const [activeTab, setActiveTab] = useState('dashboard');
             const [selectedSubject, setSelectedSubject] = useState(null);
             const [simMode, setSimMode] = useState(false);
-            const [simulatedGrades, setSimulatedGrades] = useState({}); // { subjectId: [Grade...] }
+            const [simulatedGrades, setSimulatedGrades] = useState({}); 
             const [isModalOpen, setModalOpen] = useState(false);
-            const [modalType, setModalType] = useState(null); // 'addSubject', 'addGrade'
+            const [modalType, setModalType] = useState(null);
             
-            // --- PERSISTENCE ---
             useEffect(() => {
-                const load = localStorage.getItem('notenmanager_v5_ultimate');
+                const load = localStorage.getItem('notenmanager_v7_pro');
                 if(load) setSubjects(JSON.parse(load));
                 else setSubjects([
                     { id: '1', name: 'Deutsch', isCore: true, grades: [] },
@@ -255,10 +296,9 @@
             }, []);
 
             useEffect(() => {
-                if(subjects.length) localStorage.setItem('notenmanager_v5_ultimate', JSON.stringify(subjects));
+                if(subjects.length) localStorage.setItem('notenmanager_v7_pro', JSON.stringify(subjects));
             }, [subjects]);
 
-            // --- COMPUTED DATA ---
             const getEffectiveSubjects = () => {
                 return subjects.map(sub => {
                     if(!simMode) return sub;
@@ -268,35 +308,11 @@
             };
 
             const effectiveSubjects = getEffectiveSubjects();
-            
-            // Global Stats
             const globalAvg = (() => {
                 const avgs = effectiveSubjects.map(s => calculateStats(s).avg).filter(a => a !== null);
-                if(!avgs.length) return 0;
-                return (avgs.reduce((a,b)=>a+b,0) / avgs.length).toFixed(2);
+                return avgs.length ? (avgs.reduce((a,b)=>a+b,0) / avgs.length).toFixed(2) : '-';
             })();
 
-            // History Data Calculation (Global)
-            const globalHistory = useMemo(() => {
-                const allDates = [...new Set(effectiveSubjects.flatMap(s => s.grades.map(g => g.date)))].sort();
-                if(allDates.length < 2) return [];
-                
-                return allDates.map(date => {
-                    const current = new Date(date);
-                    const subAvgsAtDate = effectiveSubjects.map(s => {
-                        const gradesUntil = s.grades.filter(g => new Date(g.date) <= current);
-                        return calculateStats({...s, grades: gradesUntil}).avg;
-                    }).filter(a => a !== null);
-                    
-                    if(!subAvgsAtDate.length) return null;
-                    return {
-                        date,
-                        value: subAvgsAtDate.reduce((a,b)=>a+b,0) / subAvgsAtDate.length
-                    };
-                }).filter(d => d !== null);
-            }, [effectiveSubjects]);
-
-            // --- ACTIONS ---
             const addSubject = (name, isCore) => {
                 setSubjects([...subjects, { id: generateId(), name, isCore, grades: [] }]);
                 setModalOpen(false);
@@ -313,134 +329,182 @@
             };
 
             const deleteGrade = (subjectId, gradeId, isSim) => {
-                if(isSim) {
-                    setSimulatedGrades(prev => ({ ...prev, [subjectId]: prev[subjectId].filter(g => g.id !== gradeId) }));
-                } else {
-                    setSubjects(prev => prev.map(s => s.id === subjectId ? { ...s, grades: s.grades.filter(g => g.id !== gradeId) } : s));
-                }
+                if(isSim) setSimulatedGrades(prev => ({ ...prev, [subjectId]: prev[subjectId].filter(g => g.id !== gradeId) }));
+                else setSubjects(prev => prev.map(s => s.id === subjectId ? { ...s, grades: s.grades.filter(g => g.id !== gradeId) } : s));
             };
 
             const downloadPDF = async () => {
                 const element = document.getElementById('certificate-print-area');
                 if(!element) return;
-                
-                // Use html2canvas to capture the element
-                const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff" });
+                const canvas = await html2canvas(element, { 
+                    scale: 2, 
+                    useCORS: true,
+                    windowWidth: 794, 
+                });
                 const imgData = canvas.toDataURL('image/png');
-                
-                // Use jspdf
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfWidth = 210;
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                
                 pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
                 pdf.save('Zwischenzeugnis.pdf');
             };
 
-            // --- RENDERERS ---
+            // 1. RENDER DASHBOARD
+            const renderDashboard = () => {
+                // Best & Worst Subject
+                const rankedSubjects = [...effectiveSubjects]
+                    .map(s => ({ name: s.name, avg: calculateStats(s).avg }))
+                    .filter(s => s.avg !== null)
+                    .sort((a,b) => a.avg - b.avg);
+                const bestSubject = rankedSubjects.length ? rankedSubjects[0] : null;
 
-            const renderDashboard = () => (
-                <div className="space-y-8 animate-fade-in">
-                    {/* Header Card */}
-                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 to-accent-600 p-8 text-white shadow-2xl">
-                        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white opacity-10 blur-3xl"></div>
-                        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-48 w-48 rounded-full bg-indigo-900 opacity-20 blur-3xl"></div>
-                        
-                        <div className="relative z-10 flex flex-col md:flex-row justify-between items-end gap-6">
+                // Weekday Analysis
+                const weekdayStats = (() => {
+                    const days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+                    const stats = new Array(7).fill(0).map(() => ({ sum: 0, count: 0 }));
+                    effectiveSubjects.flatMap(s => s.grades).forEach(g => {
+                        const d = new Date(g.date).getDay();
+                        stats[d].sum += g.value;
+                        stats[d].count++;
+                    });
+                    const best = stats.map((s, i) => ({ avg: s.count ? s.sum/s.count : 99, i })).sort((a,b) => a.avg - b.avg)[0];
+                    return stats[best.i].count > 0 ? days[best.i] : '-';
+                })();
+
+                // Global History
+                const globalHistory = (() => {
+                    const allDates = [...new Set(effectiveSubjects.flatMap(s => s.grades.map(g => g.date)))].sort();
+                    if(allDates.length < 2) return [];
+                    return allDates.map(date => {
+                        const current = new Date(date);
+                        const subAvgs = effectiveSubjects.map(s => {
+                            const gradesUntil = s.grades.filter(g => new Date(g.date) <= current);
+                            return calculateStats({...s, grades: gradesUntil}).avg;
+                        }).filter(a => a !== null);
+                        if(!subAvgs.length) return null;
+                        return { date, value: subAvgs.reduce((a,b)=>a+b,0)/subAvgs.length };
+                    }).filter(d => d !== null);
+                })();
+
+                return (
+                    <div className="space-y-8 animate-fade-in pb-20">
+                        {/* Welcome Header */}
+                        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
                             <div>
-                                <h1 className="text-4xl font-serif font-bold tracking-tight mb-2">Willkommen zurück!</h1>
-                                <p className="text-blue-100 opacity-90">Hier ist dein aktueller Leistungsstand im Überblick.</p>
+                                <h1 className="text-4xl font-display font-bold text-slate-900">Dashboard</h1>
+                                <p className="text-slate-500 mt-1">Hier ist dein aktueller Leistungsstand.</p>
                             </div>
-                            <div className="flex flex-col items-end">
-                                <span className="text-sm font-bold uppercase tracking-wider opacity-70">Gesamtschnitt</span>
-                                <span className="text-6xl font-sans font-extrabold">{globalAvg > 0 ? globalAvg : '-'}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Chart Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 border border-slate-100">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="font-bold text-gray-800 flex items-center gap-2"><Icon name="TrendingUp" className="text-brand-500"/> Notenentwicklung</h3>
-                                <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-full">Gesamtverlauf</span>
-                            </div>
-                            <div className="h-64">
-                                <AdvancedLineChart data={globalHistory} />
-                            </div>
-                        </div>
-
-                        {/* Quick Stats / Sim Mode Toggle */}
-                        <div className="space-y-6">
-                            <div className={`rounded-3xl p-6 shadow-lg transition-all duration-300 border ${simMode ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-100'}`}>
-                                <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
-                                    <Icon name="Beaker" className={simMode ? "text-blue-600" : "text-gray-400"}/> 
-                                    Simulations-Modus
-                                </h3>
-                                <p className="text-sm text-gray-500 mb-4">Teste Noten, ohne dein echtes Zeugnis zu verändern.</p>
-                                <button onClick={() => setSimMode(!simMode)} className={`w-full py-3 rounded-xl font-bold transition-all ${simMode ? 'bg-blue-600 text-white shadow-lg shadow-blue-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                                    {simMode ? 'Simulation beenden' : 'Starten'}
+                            <div className="flex gap-3">
+                                <button onClick={() => setSimMode(!simMode)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${simMode ? 'bg-accent-600 text-white shadow-lg shadow-accent-200' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
+                                    <Icon name="Beaker" size={18}/> {simMode ? 'Simulation beenden' : 'Simulieren'}
                                 </button>
                             </div>
+                        </div>
 
-                            <div className="bg-white rounded-3xl p-6 shadow-lg border border-slate-100">
-                                <h3 className="font-bold text-gray-800 mb-4">Verteilung</h3>
-                                <div className="flex items-end justify-between h-32 gap-2">
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <StatCard 
+                                icon={<Icon name="Award" className="text-brand-600"/>} 
+                                title="Gesamtschnitt" 
+                                value={globalAvg} 
+                                sub="Durchschnitt aller Fächer" 
+                                color="bg-white"
+                            />
+                            <StatCard 
+                                icon={<Icon name="TrendingUp" className="text-emerald-500"/>} 
+                                title="Bestes Fach" 
+                                value={bestSubject ? bestSubject.avg.toFixed(2) : '-'} 
+                                sub={bestSubject ? bestSubject.name : ''}
+                                color="bg-emerald-50/50 border-emerald-100"
+                            />
+                            <StatCard 
+                                icon={<Icon name="Zap" className="text-amber-500"/>} 
+                                title="Bester Wochentag" 
+                                value={weekdayStats} 
+                                sub="Statistisch gesehen"
+                                color="bg-amber-50/50 border-amber-100"
+                            />
+                            <StatCard 
+                                icon={<Icon name="Layout" className="text-accent-500"/>} 
+                                title="Anzahl Noten" 
+                                value={effectiveSubjects.flatMap(s=>s.grades).length} 
+                                sub="Eingetragene Leistungen"
+                                color="bg-accent-50/50 border-accent-100"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Main Chart */}
+                            <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                                <div className="flex justify-between items-center mb-8">
+                                    <h3 className="font-bold text-slate-800 flex gap-2 items-center"><Icon name="BarChart2" className="text-brand-500"/> Gesamtentwicklung</h3>
+                                </div>
+                                <div className="h-72">
+                                    <CleanChart data={globalHistory} />
+                                </div>
+                            </div>
+
+                            {/* Distribution */}
+                            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                                <h3 className="font-bold text-slate-800 mb-6 flex gap-2 items-center"><Icon name="PieChart" className="text-accent-500"/> Notenspiegel</h3>
+                                <div className="flex items-end justify-between h-64 gap-2">
                                     {[1,2,3,4,5,6].map(n => {
                                         const count = effectiveSubjects.flatMap(s => s.grades).filter(g => Math.round(g.value) === n).length;
                                         const max = Math.max(...[1,2,3,4,5,6].map(num => effectiveSubjects.flatMap(s => s.grades).filter(g => Math.round(g.value) === num).length)) || 1;
                                         const h = (count / max) * 100;
                                         return (
-                                            <div key={n} className="w-full flex flex-col items-center group">
-                                                <div style={{height: `${h || 5}%`}} className={`w-full rounded-t-lg transition-all duration-500 ${n <= 2 ? 'bg-emerald-400' : n <= 4 ? 'bg-amber-400' : 'bg-red-400'}`}></div>
-                                                <span className="text-xs font-bold mt-2 text-gray-400">{n}</span>
+                                            <div key={n} className="w-full flex flex-col items-center group relative">
+                                                <div className="mb-2 text-xs font-bold text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6">{count}x</div>
+                                                <div style={{height: `${h || 2}%`}} className={`w-full rounded-lg transition-all duration-500 ${n <= 2 ? 'bg-emerald-400' : n <= 4 ? 'bg-amber-400' : 'bg-red-400'} opacity-80 group-hover:opacity-100`}></div>
+                                                <span className="text-xs font-bold mt-3 text-slate-400">{n}</span>
                                             </div>
                                         )
                                     })}
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Subjects Grid */}
-                    <div>
-                        <h3 className="text-xl font-bold text-gray-800 mb-6 px-2">Deine Fächer</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {effectiveSubjects.map(sub => {
-                                const stats = calculateStats(sub);
-                                return (
-                                    <div key={sub.id} onClick={() => { setSelectedSubject(sub.id); setActiveTab('details'); }} 
-                                         className="group bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 cursor-pointer relative overflow-hidden">
-                                        <div className={`absolute top-0 left-0 w-2 h-full ${sub.isCore ? 'bg-brand-500' : 'bg-emerald-400'}`}></div>
-                                        <div className="flex justify-between items-start mb-4 pl-3">
-                                            <div>
-                                                <h4 className="font-bold text-lg text-gray-800 group-hover:text-brand-600 transition-colors">{sub.name}</h4>
-                                                <span className="text-xs text-gray-400">{sub.isCore ? 'Kernfach' : 'Nebenfach'}</span>
+                        {/* Subjects List */}
+                        <div>
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-slate-800">Fächerübersicht</h3>
+                                <button onClick={() => { setModalType('addSubject'); setModalOpen(true); }} className="text-sm font-bold text-brand-600 bg-brand-50 px-4 py-2 rounded-xl hover:bg-brand-100 transition-colors flex items-center gap-2">
+                                    <Icon name="Plus" size={16}/> Fach hinzufügen
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {effectiveSubjects.map(sub => {
+                                    const stats = calculateStats(sub);
+                                    return (
+                                        <div key={sub.id} onClick={() => { setSelectedSubject(sub.id); setActiveTab('details'); }} 
+                                             className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="font-bold text-lg text-slate-800">{sub.name}</h4>
+                                                    <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">{sub.isCore ? 'Kernfach' : 'Nebenfach'}</span>
+                                                </div>
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-lg ${stats.avg <= 2.5 ? 'bg-emerald-100 text-emerald-700' : stats.avg <= 3.5 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {stats.avg ? stats.avg.toFixed(1) : '-'}
+                                                </div>
                                             </div>
-                                            {simMode && sub.grades.some(g=>g.isSimulated) && <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-full">SIM</span>}
+                                            <div className={`absolute bottom-0 left-0 h-1 w-full ${sub.isCore ? 'bg-brand-500' : 'bg-emerald-400'} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
                                         </div>
-                                        <div className="pl-3">
-                                            <span className="text-4xl font-extrabold text-slate-800">{stats.avg ? stats.avg.toFixed(2) : '-'}</span>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                            <button onClick={() => { setModalType('addSubject'); setModalOpen(true); }} className="rounded-3xl border-2 border-dashed border-slate-300 p-6 flex flex-col items-center justify-center text-slate-400 hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50 transition-all gap-2 min-h-[160px]">
-                                <div className="bg-slate-100 rounded-full p-3 group-hover:bg-brand-100 transition-colors"><Icon name="Plus" /></div>
-                                <span className="font-bold">Fach hinzufügen</span>
-                            </button>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
-            );
+                );
+            };
 
+            // 2. RENDER DETAILS
             const renderDetails = () => {
                 const sub = effectiveSubjects.find(s => s.id === selectedSubject);
                 if(!sub) return null;
                 const stats = calculateStats(sub);
                 
-                // Subject History
+                // History for this subject
                 const history = sub.grades.sort((a,b)=>new Date(a.date)-new Date(b.date)).map((g, i, arr) => {
                     const subset = arr.slice(0, i+1);
                     return { value: calculateStats({...sub, grades: subset}).avg, date: g.date };
@@ -448,104 +512,101 @@
 
                 return (
                     <div className="space-y-8 animate-slide-up pb-20">
-                        <button onClick={() => setActiveTab('dashboard')} className="flex items-center text-sm font-bold text-gray-400 hover:text-brand-600 transition-colors mb-4"><span className="mr-1">←</span> Zurück zur Übersicht</button>
+                        <button onClick={() => setActiveTab('dashboard')} className="flex items-center text-sm font-bold text-slate-400 hover:text-brand-600 transition-colors mb-4 gap-1">
+                            <span className="text-lg">←</span> Zurück
+                        </button>
                         
-                        {/* Header */}
-                        <div className="flex flex-col md:flex-row justify-between items-end bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
                             <div>
-                                <div className="flex items-center gap-3">
-                                    <h1 className="text-4xl font-serif font-bold text-gray-900">{sub.name}</h1>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${sub.isCore ? 'bg-brand-100 text-brand-700' : 'bg-emerald-100 text-emerald-700'}`}>{sub.isCore ? 'Kernfach' : 'Nebenfach'}</span>
-                                </div>
-                                <p className="text-gray-500 mt-2">Detaillierte Analyse & Notenverwaltung</p>
+                                <h1 className="text-4xl font-display font-bold text-slate-900">{sub.name}</h1>
+                                <span className="inline-block mt-2 px-3 py-1 bg-slate-100 rounded-full text-xs font-bold text-slate-500 uppercase tracking-wider">{sub.isCore ? 'Kernfach (2:1)' : 'Nebenfach (1:1)'}</span>
                             </div>
-                            <div className="text-right mt-6 md:mt-0">
-                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Aktueller Schnitt</div>
-                                <div className={`text-6xl font-extrabold ${simMode ? 'text-blue-600' : 'text-gray-900'}`}>{stats.avg ? stats.avg.toFixed(2) : '-'}</div>
+                            <div className="text-center md:text-right">
+                                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Durchschnitt</div>
+                                <div className="text-6xl font-display font-bold text-brand-600">{stats.avg ? stats.avg.toFixed(2) : '-'}</div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Breakdown Cards */}
-                            <div className="bg-white p-6 rounded-3xl shadow-lg border-l-4 border-brand-500">
-                                <span className="text-gray-400 font-bold text-xs uppercase">Schriftlich (GL)</span>
-                                <div className="text-3xl font-bold text-gray-800 mt-2">{stats.glAvg ? stats.glAvg.toFixed(2) : '-'}</div>
-                                <div className="text-xs text-brand-600 font-medium mt-1">{sub.isCore ? 'Gewichtung 2x' : 'Gewichtung 1x'}</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* Breakdown */}
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                <span className="text-slate-400 text-xs font-bold uppercase">Schriftlich (GL)</span>
+                                <div className="text-3xl font-bold text-slate-800 mt-2">{stats.glAvg ? stats.glAvg.toFixed(2) : '-'}</div>
                             </div>
-                            <div className="bg-white p-6 rounded-3xl shadow-lg border-l-4 border-emerald-500">
-                                <span className="text-gray-400 font-bold text-xs uppercase">Mündlich (KL)</span>
-                                <div className="text-3xl font-bold text-gray-800 mt-2">{stats.klAvg ? stats.klAvg.toFixed(2) : '-'}</div>
-                                <div className="text-xs text-emerald-600 font-medium mt-1">Gewichtung 1x</div>
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                <span className="text-slate-400 text-xs font-bold uppercase">Mündlich (KL)</span>
+                                <div className="text-3xl font-bold text-slate-800 mt-2">{stats.klAvg ? stats.klAvg.toFixed(2) : '-'}</div>
                             </div>
                             
-                            {/* Target Calculator Mini */}
-                            <div className="bg-slate-900 p-6 rounded-3xl text-white shadow-xl flex flex-col justify-center">
-                                <div className="flex items-center gap-2 mb-2 text-brand-400 font-bold text-sm"><Icon name="Award" size={16}/> Zielrechner</div>
-                                <div className="text-xs text-slate-400 mb-3">Welche Note brauchst du für...</div>
+                            {/* Calc Widget */}
+                            <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-lg">
+                                <div className="flex items-center gap-2 mb-4 font-bold text-brand-400"><Icon name="Target"/> Ziel-Check</div>
                                 <div className="flex gap-2">
-                                    <input type="number" placeholder="z.B. 2.0" id="targetInput" className="w-full bg-slate-800 border-none rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-brand-500" />
+                                    <input id="targetInput" type="number" placeholder="Zielnote (z.B. 2.0)" className="w-full bg-slate-800 border-none rounded-xl px-4 text-sm text-white focus:ring-1 focus:ring-brand-500"/>
                                     <button onClick={() => {
                                         const t = parseFloat(document.getElementById('targetInput').value);
                                         if(!t) return;
-                                        // Simple Calc logic
-                                        for(let i=0.75; i<=6; i+=0.25) {
-                                            const testG = [...sub.grades, { value: i, weight: 1, category: 'KL' }];
-                                            const newAvg = calculateStats({...sub, grades: testG}).avg;
-                                            if((t < stats.avg && newAvg <= t) || (t > stats.avg && newAvg >= t)) {
-                                                alert(`Eine ${i.toFixed(2)} (KL) würde reichen!`); return;
+                                        // Simple brute force
+                                        for(let i=0.5; i<=6; i+=0.25) {
+                                            const simG = [...sub.grades, { value: i, weight: 1, category: 'KL' }];
+                                            const newA = calculateStats({...sub, grades: simG}).avg;
+                                            if(newA && ((t < stats.avg && newA <= t) || (t > stats.avg && newA >= t))) {
+                                                alert(`Eine ${i.toFixed(2)} (KL) würde reichen.`); return;
                                             }
                                         }
-                                        alert("Schwer erreichbar mit einer Note.");
-                                    }} className="bg-brand-600 hover:bg-brand-500 px-4 rounded-lg font-bold text-xs">Calc</button>
+                                        alert("Schwer erreichbar.");
+                                    }} className="bg-brand-600 px-4 rounded-xl font-bold hover:bg-brand-500 transition-colors">Go</button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Chart */}
-                        <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100">
-                            <h3 className="font-bold text-gray-800 mb-6">Verlauf</h3>
-                            <AdvancedLineChart data={history} color={sub.isCore ? '#3b82f6' : '#10b981'} height={250} />
+                        {/* History */}
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                            <h3 className="font-bold text-slate-800 mb-6">Verlauf</h3>
+                            <div className="h-64">
+                                <CleanChart data={history} color={sub.isCore ? '#3b82f6' : '#10b981'} />
+                            </div>
                         </div>
 
-                        {/* List */}
-                        <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                <h3 className="font-bold text-gray-800">Notenliste</h3>
-                                <button onClick={() => { setModalType('addGrade'); setModalOpen(true); }} className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg hover:scale-105 transition-transform">
+                        {/* Grades List */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                                <h3 className="font-bold text-slate-800">Notenliste</h3>
+                                <button onClick={() => { setModalType('addGrade'); setModalOpen(true); }} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
                                     <Icon name="Plus" size={16}/> Note
                                 </button>
                             </div>
-                            <table className="w-full text-left text-sm">
-                                <thead className="text-gray-400 uppercase font-bold bg-white border-b border-slate-100">
-                                    <tr><th className="p-4 pl-6">Datum</th><th className="p-4">Art</th><th className="p-4">Note</th><th className="p-4 text-right"></th></tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {sub.grades.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(g => (
-                                        <tr key={g.id} className={`hover:bg-slate-50 transition-colors ${g.isSimulated ? 'bg-blue-50/50' : ''}`}>
-                                            <td className="p-4 pl-6 font-medium text-gray-500">{new Date(g.date).toLocaleDateString()}</td>
-                                            <td className="p-4">
-                                                <div className="font-bold text-gray-800">{g.type}</div>
-                                                <div className="text-xs text-gray-400 uppercase tracking-wider">{g.category} • x{g.weight}</div>
-                                            </td>
-                                            <td className="p-4">
-                                                <span className={`text-lg font-bold ${g.value <= 2 ? 'text-emerald-600' : g.value <= 4 ? 'text-amber-600' : 'text-red-600'}`}>
-                                                    {g.value}{g.trend}
-                                                </span>
-                                                {g.isSimulated && <span className="ml-2 bg-blue-100 text-blue-700 text-[10px] px-1.5 rounded font-bold">SIM</span>}
-                                            </td>
-                                            <td className="p-4 text-right pr-6">
-                                                <button onClick={() => deleteGrade(sub.id, g.id, g.isSimulated)} className="text-gray-300 hover:text-red-500 transition-colors p-2"><Icon name="Trash2" size={18}/></button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {sub.grades.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-gray-400 italic">Noch keine Noten eingetragen.</td></tr>}
-                                </tbody>
-                            </table>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-white text-slate-400 uppercase font-bold text-xs border-b border-slate-50">
+                                        <tr><th className="p-4 pl-6">Datum</th><th className="p-4">Art</th><th className="p-4">Note</th><th className="p-4 text-right"></th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {sub.grades.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(g => (
+                                            <tr key={g.id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="p-4 pl-6 font-medium text-slate-500">{new Date(g.date).toLocaleDateString()}</td>
+                                                <td className="p-4">
+                                                    <span className="font-bold text-slate-800 block">{g.type}</span>
+                                                    <span className="text-xs text-slate-400">{g.category} • x{g.weight}</span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className={`text-lg font-bold ${g.value<=2?'text-emerald-600':g.value<=4?'text-amber-600':'text-red-600'}`}>{g.value}{g.trend}</span>
+                                                    {g.isSimulated && <span className="ml-2 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Sim</span>}
+                                                </td>
+                                                <td className="p-4 text-right pr-6">
+                                                    <button onClick={() => deleteGrade(sub.id, g.id, g.isSimulated)} className="text-slate-300 hover:text-red-500 p-2"><Icon name="Trash2" size={18}/></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 );
             };
 
+            // 3. RENDER CERTIFICATE
             const renderCertificate = () => {
                 const totalAvg = effectiveSubjects.reduce((acc, s) => {
                     const a = calculateStats(s).avg; return a ? acc + a : acc;
@@ -554,70 +615,82 @@
                 return (
                     <div className="pb-20 animate-fade-in flex flex-col items-center">
                         <div className="w-full max-w-4xl mb-6 flex justify-end">
-                            <button onClick={downloadPDF} className="bg-brand-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-brand-700 flex items-center gap-2 transition-all">
-                                <Icon name="Download"/> Als PDF speichern
+                            <button onClick={downloadPDF} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-slate-800 flex items-center gap-2 transition-all">
+                                <Icon name="Download"/> PDF speichern
                             </button>
                         </div>
 
-                        {/* Certificate Paper */}
-                        <div id="certificate-print-area" className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-2xl p-16 relative text-gray-900 mx-auto">
-                            {/* Watermark / BG decoration */}
-                            <div className="absolute inset-0 border-[12px] border-double border-slate-100 m-4 pointer-events-none"></div>
+                        {/* CERTIFICATE DESIGN UPGRADE */}
+                        <div id="certificate-print-area" className="a4-preview p-16 relative text-slate-900 mx-auto overflow-hidden">
+                            {/* Modern Decorative Header */}
+                            <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-r from-brand-600 via-accent-500 to-brand-600"></div>
                             
-                            {/* Header */}
-                            <div className="text-center mb-16 border-b-2 border-gray-900 pb-8">
-                                <div className="font-serif font-bold text-5xl uppercase tracking-widest mb-4">Zwischenzeugnis</div>
-                                <div className="text-xl italic text-gray-600 font-serif">Schuljahr {new Date().getFullYear()}/{new Date().getFullYear()+1}</div>
-                                {simMode && <div className="mt-4 text-brand-600 font-bold uppercase tracking-widest border border-brand-200 bg-brand-50 inline-block px-4 py-1 rounded text-sm">Simulation</div>}
+                            <div className="flex justify-between items-center mb-16 mt-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 bg-slate-900 text-white flex items-center justify-center rounded-full">
+                                        <Icon name="Award" size={32} />
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Gymnasium</div>
+                                        <div className="text-2xl font-serif font-bold text-slate-900">Notenbericht</div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-sm font-bold text-slate-500">{new Date().toLocaleDateString()}</div>
+                                    <div className="text-xs uppercase tracking-wider text-slate-400">Ausstellungsdatum</div>
+                                </div>
                             </div>
 
-                            {/* Table */}
-                            <table className="w-full border-collapse mb-12 font-serif">
+                            <div className="text-center mb-16 py-8 border-y border-slate-100">
+                                <h1 className="font-serif font-bold text-6xl text-slate-900 mb-2">Zwischenzeugnis</h1>
+                                <p className="text-xl text-slate-500 font-light">Schuljahr {new Date().getFullYear()}/{new Date().getFullYear()+1}</p>
+                                {simMode && <div className="mt-4 inline-block bg-blue-50 text-blue-600 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-blue-100">Inklusive Simulation</div>}
+                            </div>
+
+                            <table className="w-full border-collapse mb-16 font-sans">
                                 <thead>
-                                    <tr className="border-b-2 border-gray-900 text-left">
-                                        <th className="py-4 text-sm font-sans font-bold text-gray-500 uppercase tracking-widest w-1/3">Fach</th>
-                                        <th className="py-4 text-sm font-sans font-bold text-gray-500 uppercase tracking-widest">Leistungsnachweis</th>
-                                        <th className="py-4 text-sm font-sans font-bold text-gray-500 uppercase tracking-widest text-right">Note</th>
+                                    <tr className="border-b-2 border-slate-900 text-left">
+                                        <th className="py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-1/3">Fachbereich</th>
+                                        <th className="py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Leistungsnachweis</th>
+                                        <th className="py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Note</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {effectiveSubjects.map(sub => {
                                         const stats = calculateStats(sub);
                                         return (
-                                            <tr key={sub.id} className="border-b border-gray-100">
-                                                <td className="py-5 text-xl font-bold">
+                                            <tr key={sub.id} className="border-b border-slate-100">
+                                                <td className="py-5 text-lg font-bold font-serif text-slate-800">
                                                     {sub.name}
-                                                    {sub.isCore && <span className="block text-xs font-sans font-normal text-gray-400 mt-1 uppercase tracking-wider">Kernfach</span>}
+                                                    {sub.isCore && <span className="ml-2 px-2 py-0.5 bg-slate-100 text-[10px] font-sans font-bold text-slate-500 rounded uppercase tracking-wider">Kern</span>}
                                                 </td>
-                                                <td className="py-5 font-sans text-sm text-gray-500">
+                                                <td className="py-5 text-sm text-slate-500">
                                                     {stats.avg ? (
                                                         sub.isCore ? 
-                                                        <span>GL: <strong className="text-gray-800">{stats.glAvg?.toFixed(2)||'-'}</strong> (x2) &nbsp;|&nbsp; KL: <strong className="text-gray-800">{stats.klAvg?.toFixed(2)||'-'}</strong> (x1)</span> 
-                                                        : <span>Durchschnitt aller Leistungen</span>
+                                                        <span>GL: <strong className="text-slate-800">{stats.glAvg?.toFixed(2)||'-'}</strong> &nbsp;/&nbsp; KL: <strong className="text-slate-800">{stats.klAvg?.toFixed(2)||'-'}</strong></span> 
+                                                        : <span>Gesamtdurchschnitt</span>
                                                     ) : <span className="italic opacity-50">Keine Bewertung</span>}
                                                 </td>
-                                                <td className="py-5 text-right font-bold text-2xl">{stats.avg ? stats.avg.toFixed(2) : '-'}</td>
+                                                <td className="py-5 text-right font-bold text-2xl font-display text-slate-900">{stats.avg ? stats.avg.toFixed(2) : '-'}</td>
                                             </tr>
                                         )
                                     })}
                                 </tbody>
-                                <tfoot>
-                                    <tr className="border-t-4 border-double border-gray-900">
-                                        <td className="py-6 text-xl font-bold uppercase tracking-widest pt-8">Gesamtschnitt</td>
-                                        <td></td>
-                                        <td className="py-6 text-right text-4xl font-extrabold pt-8">{totalAvg ? totalAvg.toFixed(2) : '-'}</td>
-                                    </tr>
-                                </tfoot>
                             </table>
 
-                            <div className="mt-32 flex justify-between font-sans text-xs uppercase tracking-widest text-gray-400 pt-8 border-t border-gray-200">
+                            <div className="bg-slate-50 p-8 rounded-xl flex justify-between items-center mb-16 border border-slate-100">
+                                <span className="text-sm font-bold uppercase tracking-widest text-slate-500">Gesamtdurchschnitt</span>
+                                <span className="text-5xl font-display font-bold text-slate-900">{totalAvg ? totalAvg.toFixed(2) : '-'}</span>
+                            </div>
+
+                            <div className="absolute bottom-16 left-16 right-16 flex justify-between font-sans text-xs uppercase tracking-widest text-slate-400">
                                 <div className="text-center w-1/3">
-                                    <div className="mb-2">Ort, Datum</div>
-                                    <div className="font-serif text-gray-800 text-lg">{new Date().toLocaleDateString()}</div>
+                                    <div className="h-px bg-slate-300 mb-4"></div>
+                                    Klassenleitung
                                 </div>
                                 <div className="text-center w-1/3">
-                                    <div className="h-10 border-b border-gray-400 mb-2"></div>
-                                    Unterschrift Erziehungsberechtigte
+                                    <div className="h-px bg-slate-300 mb-4"></div>
+                                    Erziehungsberechtigte
                                 </div>
                             </div>
                         </div>
@@ -625,118 +698,86 @@
                 );
             };
 
+            // 4. RENDER ANALYTICS
             const renderAnalytics = () => {
-                // Prepare Data
                 const grades = effectiveSubjects.flatMap(s => s.grades);
                 
-                // 1. Month Comparison
-                const months = {};
+                // Analytics Calculations
+                const typeData = {};
                 grades.forEach(g => {
-                    const k = g.date.slice(0, 7);
-                    if(!months[k]) months[k] = { sum: 0, count: 0 };
-                    months[k].sum += g.value; months[k].count++;
+                    if(!typeData[g.type]) typeData[g.type] = { sum: 0, count: 0 };
+                    typeData[g.type].sum += g.value; typeData[g.type].count++;
                 });
-                const monthData = Object.keys(months).sort().map(k => ({
-                    label: k, value: months[k].sum / months[k].count
-                }));
-
-                // 2. Type Comparison
-                const types = {};
-                grades.forEach(g => {
-                    if(!types[g.type]) types[g.type] = { sum: 0, count: 0 };
-                    types[g.type].sum += g.value; types[g.type].count++;
-                });
-                const typeData = Object.keys(types).map(t => ({ label: t, value: types[t].sum / types[t].count, count: types[t].count }));
+                const types = Object.keys(typeData).map(k => ({ label: k, avg: typeData[k].sum/typeData[k].count, count: typeData[k].count }));
 
                 return (
                     <div className="space-y-8 animate-fade-in pb-20">
-                        <h1 className="text-3xl font-extrabold text-gray-900">Deep Dive Statistik</h1>
+                        <h1 className="text-3xl font-display font-bold text-slate-900">Statistik Center</h1>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
-                                <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><Icon name="BarChart2" className="text-brand-500"/> Monatlicher Trend</h3>
-                                <div className="h-64 flex items-end justify-between gap-2 px-2">
-                                    {monthData.map(d => {
-                                        const h = ((6 - d.value) / 5) * 100;
-                                        return (
-                                            <div key={d.label} className="w-full bg-slate-100 rounded-t-lg relative group transition-all hover:bg-brand-50">
-                                                <div style={{height: `${h}%`}} className="absolute bottom-0 w-full bg-brand-500 rounded-t-lg opacity-80 group-hover:opacity-100 transition-all"></div>
-                                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">{d.value.toFixed(2)}</div>
-                                                <div className="absolute -bottom-6 w-full text-center text-[10px] text-gray-400 rotate-45">{d.label}</div>
-                                            </div>
-                                        )
-                                    })}
-                                    {monthData.length===0 && <div className="w-full text-center text-gray-400 self-center">Keine Daten</div>}
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
-                                <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><Icon name="Layout" className="text-accent-500"/> Nach Leistungsart</h3>
-                                <div className="space-y-4">
-                                    {typeData.sort((a,b)=>a.value-b.value).map(t => (
+                            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2"><Icon name="Layout" className="text-brand-500"/> Leistung nach Art</h3>
+                                <div className="space-y-6">
+                                    {types.sort((a,b)=>a.avg-b.avg).map(t => (
                                         <div key={t.label}>
-                                            <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
-                                                <span>{t.label} <span className="font-normal text-gray-400 text-xs">({t.count})</span></span>
-                                                <span>{t.value.toFixed(2)} Ø</span>
+                                            <div className="flex justify-between text-sm font-bold text-slate-700 mb-2">
+                                                <span>{t.label} <span className="text-xs text-slate-400 font-normal ml-1">({t.count})</span></span>
+                                                <span>{t.avg.toFixed(2)} Ø</span>
                                             </div>
                                             <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                <div style={{width: `${((6-t.value)/5)*100}%`}} className={`h-full rounded-full ${t.value<=2.5?'bg-emerald-400':t.value<=3.5?'bg-amber-400':'bg-red-400'}`}></div>
+                                                <div style={{width: `${((6-t.avg)/5)*100}%`}} className={`h-full rounded-full ${t.avg<=2.5?'bg-emerald-400':t.avg<=3.5?'bg-amber-400':'bg-red-400'}`}></div>
                                             </div>
                                         </div>
                                     ))}
-                                    {typeData.length===0 && <div className="text-center text-gray-400">Keine Daten</div>}
+                                    {types.length===0 && <div className="text-center text-slate-400">Keine Daten</div>}
                                 </div>
+                            </div>
+                            
+                            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
+                                <div className="p-4 bg-brand-50 rounded-full mb-4 text-brand-600"><Icon name="Award" size={40}/></div>
+                                <h3 className="text-xl font-bold text-slate-800 mb-2">Dein Leistungs-Profil</h3>
+                                <p className="text-slate-500 mb-6">Basierend auf {grades.length} Noten</p>
+                                <div className="text-4xl font-display font-bold text-slate-900">{globalAvg}</div>
+                                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Gesamtschnitt</div>
                             </div>
                         </div>
                     </div>
-                )
+                );
             };
 
-            // --- MAIN LAYOUT ---
+            // --- APP SHELL ---
             return (
-                <div className="flex min-h-screen font-sans text-slate-600">
-                    
+                <div className="flex min-h-screen">
                     {/* Sidebar */}
-                    <nav className="w-20 lg:w-72 bg-white border-r border-slate-100 flex-shrink-0 flex flex-col sticky top-0 h-screen z-50">
-                        <div className="p-6 flex items-center gap-4 border-b border-slate-50">
-                            <div className="w-10 h-10 bg-gradient-to-br from-brand-600 to-accent-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-200">
-                                <Icon name="Award" />
-                            </div>
-                            <span className="font-serif font-bold text-2xl text-gray-900 hidden lg:block">NotenPro</span>
+                    <aside className="w-20 lg:w-72 bg-white border-r border-slate-100 flex-shrink-0 flex flex-col sticky top-0 h-screen z-50">
+                        <div className="p-8 flex items-center gap-4">
+                            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg"><Icon name="Award"/></div>
+                            <span className="font-display font-bold text-2xl hidden lg:block text-slate-900">NotenPro</span>
                         </div>
-                        
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                            <button onClick={() => { setActiveTab('dashboard'); setSelectedSubject(null); }} className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all font-medium ${activeTab === 'dashboard' ? 'bg-brand-50 text-brand-700 shadow-sm' : 'hover:bg-slate-50'}`}>
-                                <Icon name="Layout" className={activeTab === 'dashboard' ? 'text-brand-600' : 'text-slate-400'} />
-                                <span className="hidden lg:block">Dashboard</span>
-                            </button>
-                            <button onClick={() => { setActiveTab('analytics'); setSelectedSubject(null); }} className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all font-medium ${activeTab === 'analytics' ? 'bg-brand-50 text-brand-700 shadow-sm' : 'hover:bg-slate-50'}`}>
-                                <Icon name="BarChart2" className={activeTab === 'analytics' ? 'text-brand-600' : 'text-slate-400'} />
-                                <span className="hidden lg:block">Statistiken</span>
-                            </button>
-                            
-                            <div className="pt-6 pb-2 px-3 text-xs font-bold text-slate-400 uppercase tracking-widest hidden lg:block">Fächer</div>
-                            {subjects.map(s => (
-                                <button key={s.id} onClick={() => { setSelectedSubject(s.id); setActiveTab('details'); }} className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group ${selectedSubject === s.id && activeTab === 'details' ? 'bg-slate-900 text-white shadow-lg' : 'hover:bg-slate-50'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${s.isCore ? 'bg-brand-500' : 'bg-emerald-400'}`}></div>
-                                    <span className="hidden lg:block truncate">{s.name}</span>
+                        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+                            {[{ id: 'dashboard', label: 'Dashboard', icon: 'Layout' }, { id: 'analytics', label: 'Statistik', icon: 'BarChart2' }, { id: 'certificate', label: 'Zeugnis', icon: 'FileText' }].map(item => (
+                                <button key={item.id} onClick={() => { setActiveTab(item.id); setSelectedSubject(null); }} 
+                                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === item.id ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>
+                                    <Icon name={item.icon} className={activeTab === item.id ? 'text-white' : 'text-slate-400'} />
+                                    <span className="hidden lg:block">{item.label}</span>
                                 </button>
                             ))}
-                            <button onClick={() => { setModalType('addSubject'); setModalOpen(true); }} className="w-full flex items-center justify-center gap-2 p-3 mt-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-brand-300 hover:text-brand-500 hover:bg-brand-50 transition-all">
-                                <Icon name="Plus" size={18} />
-                            </button>
-                        </div>
+                            
+                            <div className="pt-8 pb-2 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest hidden lg:block">Fächer</div>
+                            <div className="space-y-1">
+                                {subjects.map(s => (
+                                    <button key={s.id} onClick={() => { setSelectedSubject(s.id); setActiveTab('details'); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium ${selectedSubject === s.id && activeTab === 'details' ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+                                        <div className={`w-2 h-2 rounded-full ${s.isCore ? 'bg-brand-500' : 'bg-emerald-400'}`}></div>
+                                        <span className="hidden lg:block truncate">{s.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <button onClick={() => { setModalType('addSubject'); setModalOpen(true); }} className="w-full mt-4 border-2 border-dashed border-slate-200 rounded-xl p-3 text-slate-400 hover:border-brand-300 hover:text-brand-500 transition-all flex justify-center"><Icon name="Plus"/></button>
+                        </nav>
+                    </aside>
 
-                        <div className="p-4 border-t border-slate-100">
-                            <button onClick={() => { setActiveTab('certificate'); setSelectedSubject(null); }} className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all font-bold ${activeTab === 'certificate' ? 'bg-amber-100 text-amber-800' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>
-                                <Icon name="FileText" className="text-amber-600" />
-                                <span className="hidden lg:block">Zeugnis</span>
-                            </button>
-                        </div>
-                    </nav>
-
-                    {/* Main Content */}
-                    <main className="flex-1 bg-slate-50/50 p-4 lg:p-10 relative overflow-y-auto h-screen">
+                    {/* Main */}
+                    <main className="flex-1 bg-slate-50/50 p-4 lg:p-10 overflow-y-auto h-screen">
                         <div className="max-w-7xl mx-auto">
                             {activeTab === 'dashboard' && renderDashboard()}
                             {activeTab === 'details' && renderDetails()}
@@ -745,82 +786,23 @@
                         </div>
                     </main>
 
-                    {/* Modal Overlay */}
+                    {/* Modal */}
                     {isModalOpen && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-                            <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative animate-slide-up">
-                                <button onClick={() => setModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600"><Icon name="Trash2" className="rotate-45" size={24}/></button> {/* X Icon workaround using rotated trash or just text X */}
-                                <div className="absolute top-6 right-6 cursor-pointer" onClick={()=>setModalOpen(false)}>✕</div>
-                                
-                                <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">{modalType === 'addSubject' ? 'Neues Fach' : 'Neue Note'}</h2>
-                                
-                                {modalType === 'addSubject' ? (
-                                    <form onSubmit={(e) => { e.preventDefault(); addSubject(e.target.name.value, e.target.core.checked); }}>
+                            {modalType === 'addSubject' && (
+                                <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md animate-slide-up relative">
+                                    <button onClick={() => setModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600"><Icon name="Trash2" className="rotate-45" size={24}/></button>
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-6">Neues Fach</h2>
+                                    <form onSubmit={(e)=>{e.preventDefault(); addSubject(e.target.name.value, e.target.core.checked)}}>
                                         <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Fachname</label>
-                                                <input name="name" autoFocus required className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-brand-500 outline-none" placeholder="z.B. Chemie" />
-                                            </div>
-                                            <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
-                                                <input type="checkbox" name="core" id="coreCheck" className="w-5 h-5 text-brand-600 rounded focus:ring-brand-500 border-gray-300" />
-                                                <label htmlFor="coreCheck" className="font-bold text-slate-700">Kernfach (Schulaufgaben?)</label>
-                                            </div>
-                                            <button type="submit" className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-colors mt-4">Erstellen</button>
+                                            <div><label className="block text-xs font-bold text-slate-400 uppercase mb-2">Name</label><input autoFocus required name="name" className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-brand-500"/></div>
+                                            <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl"><input type="checkbox" name="core" className="w-5 h-5 text-brand-600 rounded border-gray-300 focus:ring-brand-500"/><label className="font-bold text-slate-700">Kernfach?</label></div>
+                                            <button className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-colors">Erstellen</button>
                                         </div>
                                     </form>
-                                ) : (
-                                    <form onSubmit={(e) => { 
-                                        e.preventDefault(); 
-                                        const fd = new FormData(e.target);
-                                        const t = fd.get('type');
-                                        const c = GRADE_TYPES.find(x=>x.type===t)?.defaultCategory || 'KL';
-                                        addGrade(selectedSubject, {
-                                            value: parseInt(fd.get('value')),
-                                            trend: fd.get('trend'),
-                                            type: t,
-                                            category: c,
-                                            weight: parseFloat(fd.get('weight')),
-                                            date: fd.get('date')
-                                        });
-                                    }}>
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Note</label>
-                                                    <select name="value" className="w-full bg-slate-50 border-slate-200 rounded-xl px-3 py-3 font-bold">{[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}</select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tendenz</label>
-                                                    <select name="trend" className="w-full bg-slate-50 border-slate-200 rounded-xl px-3 py-3 font-bold"><option value="">glatt</option><option value="+">+</option><option value="-">-</option></select>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Art</label>
-                                                <select name="type" className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 font-bold">
-                                                    {GRADE_TYPES.map(t=><option key={t.type} value={t.type}>{t.label}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                                    <span className="block text-xs text-slate-400 uppercase">Kategorie</span>
-                                                    <span className="font-bold text-slate-700">Auto</span>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Gewichtung</label>
-                                                    <select name="weight" className="w-full bg-slate-50 border-slate-200 rounded-xl px-3 py-3 font-bold"><option value="1">1.0 (Normal)</option><option value="2">2.0 (Doppelt)</option><option value="0.5">0.5 (Halbe)</option></select>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Datum</label>
-                                                <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 font-bold" />
-                                            </div>
-                                            <button type="submit" className={`w-full text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity mt-2 ${simMode ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-black shadow-lg shadow-slate-200'}`}>
-                                                {simMode ? 'Simulieren' : 'Speichern'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                )}
-                            </div>
+                                </div>
+                            )}
+                            {modalType === 'addGrade' && <AddGradeModal onClose={() => setModalOpen(false)} onSave={(d) => addGrade(selectedSubject, d)} isSim={simMode} />}
                         </div>
                     )}
                 </div>
