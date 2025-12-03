@@ -1,1058 +1,906 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Save, 
-  BarChart3, 
-  BookOpen, 
-  GraduationCap, 
-  LayoutDashboard, 
-  TrendingUp,
-  TrendingDown,
-  Calendar,
-  Settings,
-  Calculator,
-  FileText,
-  ArrowUp,
-  ArrowDown,
-  X,
-  Info,
-  FlaskConical,
-  Target,
-  ChevronRight,
-  Award,
-  AlertCircle
-} from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  RadarChart, 
-  PolarGrid, 
-  PolarAngleAxis, 
-  PolarRadiusAxis, 
-  Radar, 
-  Legend,
-  Cell,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  ComposedChart,
-  ReferenceLine
-} from 'recharts';
-
-// --- Typen & Interfaces ---
-
-type GradeType = 'Schulaufgabe' | 'Kurzarbeit' | 'Ex' | 'Abfrage' | 'Referat' | 'Unterrichtsbeitrag' | 'Sonstiges';
-type Trend = '+' | '-' | '';
-
-interface Grade {
-  id: string;
-  value: number; 
-  trend: Trend; 
-  type: GradeType;
-  category: 'GL' | 'KL'; 
-  weight: number; 
-  date: string;
-  isSimulated?: boolean; 
-}
-
-interface Subject {
-  id: string;
-  name: string;
-  isCore: boolean; 
-  grades: Grade[];
-}
-
-// --- Hilfsfunktionen ---
-
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
-const GRADE_TYPES: { type: GradeType, defaultCategory: 'GL' | 'KL', label: string }[] = [
-  { type: 'Schulaufgabe', defaultCategory: 'GL', label: 'Schulaufgabe' },
-  { type: 'Kurzarbeit', defaultCategory: 'KL', label: 'Kurzarbeit' }, 
-  { type: 'Ex', defaultCategory: 'KL', label: 'Stegreifaufgabe (Ex)' },
-  { type: 'Abfrage', defaultCategory: 'KL', label: 'Abfrage' },
-  { type: 'Referat', defaultCategory: 'KL', label: 'Referat' },
-  { type: 'Unterrichtsbeitrag', defaultCategory: 'KL', label: 'Unterrichtsbeitrag' },
-  { type: 'Sonstiges', defaultCategory: 'KL', label: 'Sonstiges' },
-];
-
-const calculateStats = (subject: Subject, gradesOverride?: Grade[]) => {
-  const grades = gradesOverride || subject.grades;
-  const glGrades = grades.filter(g => g.category === 'GL');
-  const klGrades = grades.filter(g => g.category === 'KL');
-
-  const getGroupAvg = (gList: Grade[]) => {
-    if (gList.length === 0) return null;
-    const sumProduct = gList.reduce((acc, g) => acc + (g.value * g.weight), 0);
-    const sumWeight = gList.reduce((acc, g) => acc + g.weight, 0);
-    return sumWeight === 0 ? 0 : sumProduct / sumWeight;
-  };
-
-  const glAvg = getGroupAvg(glGrades);
-  const klAvg = getGroupAvg(klGrades);
-  let finalAvg: number | null = null;
-
-  if (subject.isCore) {
-    if (glAvg !== null && klAvg !== null) {
-      finalAvg = (glAvg * 2 + klAvg) / 3;
-    } else if (glAvg !== null) {
-      finalAvg = glAvg;
-    } else if (klAvg !== null) {
-      finalAvg = klAvg;
-    }
-  } else {
-    const allGrades = [...glGrades, ...klGrades];
-    finalAvg = getGroupAvg(allGrades);
-  }
-
-  return { avg: finalAvg, glAvg, klAvg };
-};
-
-const calculateSubjectAverageRaw = (subject: Subject) => calculateStats(subject).avg;
-
-// --- Hauptkomponente ---
-
-export default function GradeManagerApp() {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'subjects' | 'certificate' | 'analytics'>('dashboard');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  
-  // Simulation State
-  const [simulatedGrades, setSimulatedGrades] = useState<Record<string, Grade[]>>({});
-  const [isSimulationMode, setIsSimulationMode] = useState(false);
-
-  // UI States
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null);
-
-  // Target Calculator State
-  const [targetGrade, setTargetGrade] = useState<string>("");
-  const [targetResult, setTargetResult] = useState<string>("");
-
-  useEffect(() => {
-    const savedData = localStorage.getItem('notenmanager_data_v3');
-    if (savedData) {
-      setSubjects(JSON.parse(savedData));
-    } else {
-      setSubjects([
-        { id: '1', name: 'Mathematik', isCore: true, grades: [] },
-        { id: '2', name: 'Deutsch', isCore: true, grades: [] },
-        { id: '3', name: 'Englisch', isCore: true, grades: [] },
-      ]);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('notenmanager_data_v3', JSON.stringify(subjects));
-  }, [subjects]);
-
-  useEffect(() => {
-    setTargetGrade("");
-    setTargetResult("");
-  }, [selectedSubjectId]);
-
-  // --- Logic ---
-
-  const handleAddGrade = (subjectId: string, newGrade: Omit<Grade, 'id'>) => {
-    if (isSimulationMode) {
-        const simGrade = { ...newGrade, id: generateId(), isSimulated: true };
-        setSimulatedGrades(prev => ({
-            ...prev,
-            [subjectId]: [...(prev[subjectId] || []), simGrade]
-        }));
-    } else {
-        setSubjects(prev => prev.map(sub => {
-            if (sub.id === subjectId) {
-                return { ...sub, grades: [...sub.grades, { ...newGrade, id: generateId(), isSimulated: false }] };
-            }
-            return sub;
-        }));
-    }
-    setIsAddModalOpen(false);
-  };
-
-  const handleDeleteGrade = (subjectId: string, gradeId: string, isSim: boolean) => {
-    if (isSim) {
-        setSimulatedGrades(prev => ({
-            ...prev,
-            [subjectId]: prev[subjectId].filter(g => g.id !== gradeId)
-        }));
-    } else {
-        setSubjects(prev => prev.map(sub => {
-            if (sub.id === subjectId) {
-                return { ...sub, grades: sub.grades.filter(g => g.id !== gradeId) };
-            }
-            return sub;
-        }));
-    }
-  };
-
-  const handleAddSubject = (name: string, isCore: boolean) => {
-    setSubjects([...subjects, { id: generateId(), name, isCore, grades: [] }]);
-  };
-
-  const confirmDeleteSubject = () => {
-    if (subjectToDelete) {
-        setSubjects(subjects.filter(s => s.id !== subjectToDelete));
-        if (selectedSubjectId === subjectToDelete) setSelectedSubjectId(null);
-        setSubjectToDelete(null);
-    }
-  };
-
-  const moveSubject = (index: number, direction: 'up' | 'down') => {
-    const newSubjects = [...subjects];
-    if (direction === 'up' && index > 0) {
-        [newSubjects[index], newSubjects[index - 1]] = [newSubjects[index - 1], newSubjects[index]];
-    } else if (direction === 'down' && index < newSubjects.length - 1) {
-        [newSubjects[index], newSubjects[index + 1]] = [newSubjects[index + 1], newSubjects[index]];
-    }
-    setSubjects(newSubjects);
-  };
-
-  const getEffectiveSubject = (subject: Subject) => {
-      if (!isSimulationMode) return subject;
-      const sim = simulatedGrades[subject.id] || [];
-      return { ...subject, grades: [...subject.grades, ...sim] };
-  };
-
-  // --- Render Views ---
-
-  const renderDashboard = () => {
-    const effectiveSubjects = subjects.map(s => getEffectiveSubject(s));
-    const validSubjects = effectiveSubjects.filter(s => calculateSubjectAverageRaw(s) !== null);
-    const overallSum = validSubjects.reduce((acc, s) => acc + (calculateSubjectAverageRaw(s) || 0), 0);
-    const totalAverage = validSubjects.length > 0 ? (overallSum / validSubjects.length).toFixed(2) : "-";
-
-    const radarData = effectiveSubjects.map(s => ({
-      subject: s.name,
-      A: calculateSubjectAverageRaw(s) || 0,
-      fullMark: 6
-    })).filter(d => d.A > 0);
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotenManager Pro - Standalone</title>
+    <!-- 1. Tailwind CSS CDN: Sorgt für das moderne Design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. React, ReactDOM & Babel: Ermöglicht das Ausführen von JSX im Browser -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    // Distribution
-    const distribution = [0,0,0,0,0,0];
-    effectiveSubjects.forEach(s => s.grades.forEach(g => {
-        const val = Math.round(g.value);
-        if(val >= 1 && val <= 6) distribution[val-1]++;
-    }));
-    const distData = distribution.map((count, i) => ({ name: (i+1).toString(), count }));
+    <style>
+        /* Zusätzlicher Stil, um Inter Font zu laden */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        /* Scrollbar ausblenden, aber scrollen ermöglichen */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-    return (
-      <div className="space-y-8 animate-in fade-in duration-500 pb-24">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-                <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Übersicht</h1>
-                <p className="text-gray-500 mt-2 text-lg">Dein aktueller Leistungsstand.</p>
-            </div>
-            
-            <div className="flex gap-4">
-                 <button 
-                    onClick={() => setIsSimulationMode(!isSimulationMode)}
-                    className={`px-5 py-3 rounded-xl flex items-center gap-2 font-bold transition-all shadow-sm ${isSimulationMode ? 'bg-blue-600 text-white shadow-blue-200 ring-2 ring-blue-500 ring-offset-2' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
-                 >
-                    <FlaskConical size={20} className={isSimulationMode ? 'animate-pulse' : ''} /> 
-                    {isSimulationMode ? 'Simulation beenden' : 'Simulation starten'}
-                 </button>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { createRoot } = ReactDOM; // Für React 18 Fix
 
-                <div className={`px-6 py-3 rounded-xl shadow-sm border flex items-center gap-4 transition-colors ${isSimulationMode ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
-                    <div>
-                        <span className="text-xs text-gray-400 uppercase font-bold tracking-wider block">Gesamtschnitt</span>
-                        <span className={`text-3xl font-black ${isSimulationMode ? 'text-blue-600' : parseFloat(totalAverage) <= 2.0 ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                            {totalAverage}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        {isSimulationMode && (
-             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-2xl flex items-center justify-between shadow-xl shadow-blue-200/50">
-                 <div className="flex items-center gap-4">
-                    <div className="bg-white/20 p-3 rounded-xl"><FlaskConical size={28} /></div>
-                    <div>
-                        <p className="font-bold text-lg">Simulationsmodus aktiv</p>
-                        <p className="text-blue-100 text-sm">Du kannst jetzt fächerübergreifend "Was-wäre-wenn" Noten hinzufügen. Das Zeugnis wird automatisch angepasst.</p>
-                    </div>
-                 </div>
-             </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 lg:col-span-2">
-                <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <TrendingUp size={20} className="text-indigo-500"/> Fächer-Profil
-                </h3>
-                <div className="h-80 w-full">
-                    {radarData.length > 2 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                                <PolarGrid stroke="#e5e7eb" />
-                                <PolarAngleAxis dataKey="subject" tick={{fontSize: 12, fill: '#6b7280', fontWeight: 500}} />
-                                <PolarRadiusAxis angle={30} domain={[0, 6]} reversed tick={false} axisLine={false} />
-                                <Radar 
-                                    name="Schnitt" 
-                                    dataKey="A" 
-                                    stroke={isSimulationMode ? "#3b82f6" : "#4F46E5"} 
-                                    strokeWidth={3}
-                                    fill={isSimulationMode ? "#3b82f6" : "#4F46E5"} 
-                                    fillOpacity={0.2} 
-                                />
-                                <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}} />
-                            </RadarChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 p-4">
-                            <p>Zu wenige Daten.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100">
-                <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <BarChart3 size={20} className="text-emerald-500"/> Notenspiegel
-                </h3>
-                <div className="h-80 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={distData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                            <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                            <Tooltip cursor={{fill: '#f9fafb'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)'}} />
-                            <Bar dataKey="count" radius={[6, 6, 6, 6]} barSize={32}>
-                                {distData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={index < 2 ? '#10B981' : index < 4 ? '#F59E0B' : '#EF4444'} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderAnalytics = () => {
-    const effectiveSubjects = subjects.map(s => getEffectiveSubject(s));
-    
-    // --- 1. Global Grade History Calculation ---
-    // Sammle alle eindeutigen Daten, an denen Noten eingetragen wurden
-    const allDates = Array.from(new Set(effectiveSubjects.flatMap(s => s.grades.map(g => g.date)))).sort();
-    
-    // Berechne für jedes Datum den damaligen Gesamtschnitt
-    const globalHistoryData = allDates.map(date => {
-        const currentDate = new Date(date);
-        
-        // Berechne Schnitt für jedes Fach zu diesem Zeitpunkt
-        const subjectAvgs = effectiveSubjects.map(sub => {
-            const gradesAtDate = sub.grades.filter(g => new Date(g.date) <= currentDate);
-            if (gradesAtDate.length === 0) return null;
-            // Temporäres Fach bauen zur Berechnung
-            return calculateSubjectAverageRaw({...sub, grades: gradesAtDate});
-        }).filter(val => val !== null) as number[];
-
-        if (subjectAvgs.length === 0) return null;
-        
-        // Gesamtschnitt an diesem Tag
-        const globalAvg = subjectAvgs.reduce((a, b) => a + b, 0) / subjectAvgs.length;
-        
-        return {
-            date: currentDate.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit'}),
-            avg: parseFloat(globalAvg.toFixed(2))
+        // --- Lucide Icons (Inline-Definition, da Imports in Babel-Scripten kompliziert sind) ---
+        const Icon = ({ name, size = 20, className = 'text-gray-500' }) => {
+            const icons = {
+                Plus: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14M12 5v14"/></svg>,
+                Trash2: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18m-2-3H7a2 2 0 0 0-2 2v2h14V5a2 2 0 0 0-2-2zM19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>,
+                BarChart3: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3v18h18M18 17V9m-6 8V5m-6 12v-4"/></svg>,
+                GraduationCap: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.5 8.5L12 13 2.5 8.5M12 2L2.5 7v10l9.5 5 9.5-5V7l-9.5-5z"/></svg>,
+                LayoutDashboard: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
+                TrendingUp: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 13 22 9 16 3 13 6 9 2 2 9"/><path d="M22 9h-6v6"/></svg>,
+                TrendingDown: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 15 16 21 13 18 9 22 2 15"/><path d="M18 15h-6v6"/></svg>,
+                FileText: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v5h5M16 13H8m8 4H8m8 4H8"/></svg>,
+                ArrowUp: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 19V5M5 12l7-7 7 7"/></svg>,
+                ArrowDown: <svg xmlns="http://www.w3s.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 5v14M19 12l-7 7-7-7"/></svg>,
+                X: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6L6 18M6 6l12 12"/></svg>,
+                Info: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>,
+                FlaskConical: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.4 2a2 2 0 0 0-1.6-1H11.2a2 2 0 0 0-1.6 1L3 14h18z"/><path d="M7 16h10L14 24H9z"/></svg>,
+                Target: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+                BookOpen: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12h20m-2 0V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7m18 0v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7"/></svg>,
+                Award: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 14v4M12 2a1 1 0 0 0-1 1v1h2V3a1 1 0 0 0-1-1zM2 15h20M7 15h10l-1.5-3.5-7 0L7 15zM22 17v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-2"/></svg>,
+                AlertCircle: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+            };
+            return icons[name] || null;
         };
-    }).filter(d => d !== null);
 
-    // --- 2. GL vs KL Comparison (Written vs Oral) ---
-    const allGlGrades = effectiveSubjects.flatMap(s => s.grades.filter(g => g.category === 'GL'));
-    const allKlGrades = effectiveSubjects.flatMap(s => s.grades.filter(g => g.category === 'KL'));
+        // --- Typen & Interfaces ---
 
-    const calcGroupAvg = (grades: Grade[]) => {
-        if (!grades.length) return 0;
-        const sum = grades.reduce((acc, g) => acc + (g.value * g.weight), 0);
-        const weight = grades.reduce((acc, g) => acc + g.weight, 0);
-        return weight ? parseFloat((sum/weight).toFixed(2)) : 0;
-    };
+        const GRADE_TYPES = [
+            { type: 'Schulaufgabe', defaultCategory: 'GL', label: 'Schulaufgabe' },
+            { type: 'Kurzarbeit', defaultCategory: 'KL', label: 'Kurzarbeit' }, 
+            { type: 'Ex', defaultCategory: 'KL', label: 'Stegreifaufgabe (Ex)' },
+            { type: 'Abfrage', defaultCategory: 'KL', label: 'Abfrage' },
+            { type: 'Referat', defaultCategory: 'KL', label: 'Referat' },
+            { type: 'Unterrichtsbeitrag', defaultCategory: 'KL', label: 'Unterrichtsbeitrag' },
+            { type: 'Sonstiges', defaultCategory: 'KL', label: 'Sonstiges' },
+        ];
 
-    const glKlData = [
-        { name: 'Schriftlich (GL)', avg: calcGroupAvg(allGlGrades), count: allGlGrades.length, color: '#4F46E5' },
-        { name: 'Mündlich/Klein (KL)', avg: calcGroupAvg(allKlGrades), count: allKlGrades.length, color: '#10B981' }
-    ];
+        // --- Hilfsfunktionen ---
 
-    // --- 3. Best vs Worst Trend (Simple) ---
-    // Wir vergleichen den Schnitt aus den letzten 3 Noten vs Gesamtschnitt
-    const trendData = effectiveSubjects.map(sub => {
-        const sortedGrades = [...sub.grades].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const recentGrades = sortedGrades.slice(0, 3);
-        const overallAvg = calculateSubjectAverageRaw(sub) || 0;
-        
-        if (recentGrades.length === 0) return { name: sub.name, change: 0, current: 0 };
+        const generateId = () => Math.random().toString(36).substr(2, 9);
 
-        // Schnitt der letzten 3
-        const recentAvg = calculateSubjectAverageRaw({...sub, grades: recentGrades}) || overallAvg;
-        
-        // Negative Differenz ist gut (Note wird kleiner)
-        const diff = overallAvg - recentAvg; 
-        return { name: sub.name, change: diff, current: overallAvg };
-    }).filter(d => d.current > 0).sort((a,b) => b.change - a.change); // Best improvement first
+        const calculateStats = (subject, gradesOverride) => {
+          const grades = gradesOverride || subject.grades;
+          const glGrades = grades.filter(g => g.category === 'GL');
+          const klGrades = grades.filter(g => g.category === 'KL');
 
-    const bestImprovement = trendData.length > 0 ? trendData[0] : null;
-    const worstDecline = trendData.length > 0 ? trendData[trendData.length - 1] : null;
+          const getGroupAvg = (gList) => {
+            if (gList.length === 0) return null;
+            const sumProduct = gList.reduce((acc, g) => acc + (g.value * g.weight), 0);
+            const sumWeight = gList.reduce((acc, g) => acc + g.weight, 0);
+            return sumWeight === 0 ? 0 : sumProduct / sumWeight;
+          };
+
+          const glAvg = getGroupAvg(glGrades);
+          const klAvg = getGroupAvg(klGrades);
+          let finalAvg = null;
+
+          if (subject.isCore) {
+            if (glAvg !== null && klAvg !== null) {
+              finalAvg = (glAvg * 2 + klAvg) / 3;
+            } else if (glAvg !== null) {
+              finalAvg = glAvg;
+            } else if (klAvg !== null) {
+              finalAvg = klAvg;
+            }
+          } else {
+            const allGrades = [...glGrades, ...klGrades];
+            finalAvg = getGroupAvg(allGrades);
+          }
+
+          return { avg: finalAvg, glAvg, klAvg };
+        };
+
+        const calculateSubjectAverageRaw = (subject) => calculateStats(subject).avg;
+
+        // --- Hauptkomponente ---
+
+        const GradeManagerApp = () => {
+          const [subjects, setSubjects] = useState([]);
+          const [activeTab, setActiveTab] = useState('dashboard');
+          const [selectedSubjectId, setSelectedSubjectId] = useState(null);
+          
+          const [simulatedGrades, setSimulatedGrades] = useState({});
+          const [isSimulationMode, setIsSimulationMode] = useState(false);
+
+          const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+          const [subjectToDelete, setSubjectToDelete] = useState(null);
+
+          const [targetGrade, setTargetGrade] = useState("");
+          const [targetResult, setTargetResult] = useState("");
+
+          // Initial Load
+          useEffect(() => {
+            const savedData = localStorage.getItem('notenmanager_data_v3');
+            if (savedData) {
+              setSubjects(JSON.parse(savedData));
+            } else {
+              setSubjects([
+                { id: '1', name: 'Mathematik', isCore: true, grades: [] },
+                { id: '2', name: 'Deutsch', isCore: true, grades: [] },
+                { id: '3', name: 'Englisch', isCore: true, grades: [] },
+              ]);
+            }
+          }, []);
+
+          // Auto Save
+          useEffect(() => {
+            localStorage.setItem('notenmanager_data_v3', JSON.stringify(subjects));
+          }, [subjects]);
+
+          // Reset Target Calc on subject change
+          useEffect(() => {
+            setTargetGrade("");
+            setTargetResult("");
+          }, [selectedSubjectId]);
+
+          // --- Logic Functions (omitted for brevity, copied from previous working version) ---
+
+          const handleAddGrade = (subjectId, newGrade) => {
+            if (isSimulationMode) {
+                const simGrade = { ...newGrade, id: generateId(), isSimulated: true };
+                setSimulatedGrades(prev => ({
+                    ...prev,
+                    [subjectId]: [...(prev[subjectId] || []), simGrade]
+                }));
+            } else {
+                setSubjects(prev => prev.map(sub => {
+                    if (sub.id === subjectId) {
+                        return { ...sub, grades: [...sub.grades, { ...newGrade, id: generateId(), isSimulated: false }] };
+                    }
+                    return sub;
+                }));
+            }
+            setIsAddModalOpen(false);
+          };
+
+          const handleDeleteGrade = (subjectId, gradeId, isSim) => {
+            if (isSim) {
+                setSimulatedGrades(prev => ({
+                    ...prev,
+                    [subjectId]: prev[subjectId].filter(g => g.id !== gradeId)
+                }));
+            } else {
+                setSubjects(prev => prev.map(sub => {
+                    if (sub.id === subjectId) {
+                        return { ...sub, grades: sub.grades.filter(g => g.id !== gradeId) };
+                    }
+                    return sub;
+                }));
+            }
+          };
+
+          const handleAddSubject = (name, isCore) => {
+            setSubjects([...subjects, { id: generateId(), name, isCore, grades: [] }]);
+          };
+
+          const confirmDeleteSubject = () => {
+            if (subjectToDelete) {
+                setSubjects(subjects.filter(s => s.id !== subjectToDelete));
+                if (selectedSubjectId === subjectToDelete) setSelectedSubjectId(null);
+                setSubjectToDelete(null);
+            }
+          };
+
+          const moveSubject = (index, direction) => {
+            const newSubjects = [...subjects];
+            if (direction === 'up' && index > 0) {
+                [newSubjects[index], newSubjects[index - 1]] = [newSubjects[index - 1], newSubjects[index]];
+            } else if (direction === 'down' && index < newSubjects.length - 1) {
+                [newSubjects[index], newSubjects[index + 1]] = [newSubjects[index + 1], newSubjects[index]];
+            }
+            setSubjects(newSubjects);
+          };
+
+          const getEffectiveSubject = (subject) => {
+              if (!isSimulationMode) return subject;
+              const sim = simulatedGrades[subject.id] || [];
+              return { ...subject, grades: [...subject.grades, ...sim] };
+          };
+          
+          const calculateTarget = (subject, stats) => {
+              if(!targetGrade || stats.avg === null) return;
+              const target = parseFloat(targetGrade);
+              setTargetResult("Berechne...");
+              
+              for(let i = 0.5; i <= 6.0; i += 0.25) {
+                   const simSub = { ...subject, grades: [...subject.grades, { id: 'temp', value: i, weight: 1, category: 'KL' }] };
+                   const newAvg = calculateStats(simSub).avg;
+                   if(newAvg && (target < stats.avg ? newAvg <= target : newAvg >= target)) { 
+                       setTargetResult(`Eine ${i.toFixed(2)} (KL) würde reichen.`);
+                       return;
+                   }
+              }
+              setTargetResult("Mit einer einzelnen Note schwer erreichbar.");
+          };
 
 
-    return (
-        <div className="space-y-8 animate-in fade-in duration-300 pb-24">
-             <div>
-                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">Statistik-Zentrale</h1>
-                <p className="text-gray-500">Detaillierte Analyse deiner Leistungen.</p>
-            </div>
+          // --- Modals (inline components for simplicity) ---
 
-            {/* 1. Global History Chart */}
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                <div className="mb-6">
-                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <TrendingUp className="text-blue-500" /> Verlauf deines Gesamtschnitts
-                    </h3>
-                    <p className="text-gray-500 text-sm">Entwicklung über alle Fächer hinweg</p>
+          const DeleteConfirmModal = () => {
+            if (!subjectToDelete) return null;
+            const sub = subjects.find(s => s.id === subjectToDelete);
+            return (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                     <div className="bg-white p-6 rounded-3xl shadow-xl max-w-sm w-full">
+                        <h3 className="font-bold text-xl text-gray-900 mb-2">Fach löschen?</h3>
+                        <p className="text-gray-500 mb-8">Möchtest du <b>{sub?.name}</b> wirklich löschen? Alle eingetragenen Noten gehen verloren.</p>
+                        <div className="flex justify-end gap-3">
+                            <button onClick={() => setSubjectToDelete(null)} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors">Abbrechen</button>
+                            <button onClick={confirmDeleteSubject} className="px-5 py-2.5 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 shadow-lg shadow-red-200 transition-all transform hover:scale-105">Löschen</button>
+                        </div>
+                     </div>
                 </div>
-                <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={globalHistoryData}>
-                            <defs>
-                                <linearGradient id="colorGlobal" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="date" tick={{fontSize: 12, fill: '#94a3b8'}} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
-                            <YAxis domain={[1, 6]} reversed hide />
-                            <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
-                            <Area type="monotone" dataKey="avg" stroke="#3b82f6" strokeWidth={4} fill="url(#colorGlobal)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
+            );
+          };
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* 2. GL vs KL Comparison */}
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                        <FileText size={20} className="text-indigo-500"/> Schriftlich vs. Mündlich
-                    </h3>
-                    <div className="h-64">
-                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={glKlData} layout="vertical" margin={{left: 0, right: 30}}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                                <XAxis type="number" domain={[0, 6]} hide />
-                                <YAxis dataKey="name" type="category" width={140} tick={{fontSize: 12, fontWeight: 500}} axisLine={false} tickLine={false} />
-                                <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px'}}/>
-                                <Bar dataKey="avg" radius={[0, 8, 8, 0]} barSize={40} background={{ fill: '#f1f5f9', radius: [0, 8, 8, 0] }}>
-                                    {glKlData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="mt-4 flex justify-between text-sm text-gray-500 px-4">
-                        <span>Schulaufgaben: {glKlData[0].avg > 0 ? glKlData[0].avg : '-'} Ø</span>
-                        <span>Mündlich/Exen: {glKlData[1].avg > 0 ? glKlData[1].avg : '-'} Ø</span>
-                    </div>
-                </div>
-
-                {/* 3. Winners & Losers */}
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-center">
-                    <h3 className="text-lg font-bold text-gray-800 mb-6">Aktuelle Trends</h3>
-                    
-                    <div className="space-y-6">
-                        {bestImprovement && bestImprovement.change > 0 && (
-                            <div className="flex items-center gap-4 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-                                <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600">
-                                    <TrendingUp size={24} />
+          const AddGradeModal = () => {
+            const [formData, setFormData] = useState({
+                value: '1', trend: '', type: 'Schulaufgabe', category: 'GL', weight: '1', date: new Date().toISOString().split('T')[0]
+            });
+            const handleTypeChange = (e) => {
+                const t = e.target.value;
+                const defaultCat = GRADE_TYPES.find(gt => gt.type === t)?.defaultCategory || 'KL';
+                setFormData({...formData, type: t, category: defaultCat});
+            }
+            return (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className={`bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 border-4 ${isSimulationMode ? 'border-blue-500' : 'border-transparent'}`}>
+                        <div className={`p-6 border-b flex justify-between items-center ${isSimulationMode ? 'bg-blue-50 border-blue-100' : 'bg-gray-50 border-gray-100'}`}>
+                            <div>
+                                <h3 className="font-bold text-xl">{isSimulationMode ? 'Simulierte Note' : 'Neue Note'}</h3>
+                                {isSimulationMode && <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Wird nicht gespeichert</p>}
+                            </div>
+                            <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600 bg-white p-2 rounded-full shadow-sm"><Icon name="X" size={16} /></button>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Note</label>
+                                    <select className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-lg" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})}>
+                                        {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+                                    </select>
                                 </div>
-                                <div>
-                                    <p className="text-sm text-emerald-800 font-bold uppercase tracking-wider">Aufsteiger</p>
-                                    <p className="text-xl font-bold text-gray-900">{bestImprovement.name}</p>
-                                    <p className="text-xs text-emerald-600 mt-1">Schnitt verbessert sich aktuell</p>
+                                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tendenz</label>
+                                    <select className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-lg" value={formData.trend} onChange={e => setFormData({...formData, trend: e.target.value})}>
+                                        <option value="">glatt</option><option value="+">+</option><option value="-">-</option>
+                                    </select>
                                 </div>
                             </div>
-                        )}
-
-                        {worstDecline && worstDecline.change < 0 && (
-                            <div className="flex items-center gap-4 bg-red-50 p-4 rounded-2xl border border-red-100">
-                                <div className="bg-red-100 p-3 rounded-xl text-red-600">
-                                    <TrendingDown size={24} />
+                            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Art</label>
+                                <select className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors" value={formData.type} onChange={handleTypeChange}>
+                                    {GRADE_TYPES.map(gt => <option key={gt.type} value={gt.type}>{gt.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Kategorie</label>
+                                    <select className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                        <option value="GL">Groß (GL)</option><option value="KL">Klein (KL)</option>
+                                    </select>
                                 </div>
-                                <div>
-                                    <p className="text-sm text-red-800 font-bold uppercase tracking-wider">Absteiger</p>
-                                    <p className="text-xl font-bold text-gray-900">{worstDecline.name}</p>
-                                    <p className="text-xs text-red-600 mt-1">Schnitt verschlechtert sich aktuell</p>
+                                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Gewichtung</label>
+                                    <select className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})}>
+                                        <option value="0.5">0.5 (z.B. Halbe)</option><option value="1">1.0 (Standard)</option><option value="2">2.0 (Doppelt)</option>
+                                    </select>
                                 </div>
                             </div>
-                        )}
-
-                        {(!bestImprovement || bestImprovement.change <= 0) && (!worstDecline || worstDecline.change >= 0) && (
-                            <div className="text-center text-gray-400 py-4">
-                                Zu wenig Daten für Trendanalysen.
+                            <div className="bg-indigo-50 p-4 rounded-xl flex gap-3 text-xs text-indigo-800 leading-relaxed">
+                                <Icon name="Info" size={16} className="text-indigo-600 flex-shrink-0 mt-0.5" />
+                                <p><b>Info:</b> Schulaufgaben (GL) zählen in Kernfächern automatisch doppelt. Ändere die Gewichtung hier nur bei Besonderheiten.</p>
                             </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-             {/* Subject Management */}
-             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mt-8">
-                 <h3 className="text-lg font-bold text-gray-800 mb-4">Fächer verwalten & ordnen</h3>
-                 <div className="space-y-2">
-                    {subjects.map((sub, idx) => (
-                        <div key={sub.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group">
-                            <span className="font-medium ml-2">{sub.name}</span>
-                            <div className="flex gap-2">
-                                <button onClick={() => moveSubject(idx, 'up')} disabled={idx === 0} className="p-2 bg-white rounded-lg text-gray-400 hover:text-indigo-600 shadow-sm disabled:opacity-30 transition-colors"><ArrowUp size={16} /></button>
-                                <button onClick={() => moveSubject(idx, 'down')} disabled={idx === subjects.length - 1} className="p-2 bg-white rounded-lg text-gray-400 hover:text-indigo-600 shadow-sm disabled:opacity-30 transition-colors"><ArrowDown size={16} /></button>
-                                <button onClick={() => setSubjectToDelete(sub.id)} className="p-2 bg-white rounded-lg text-gray-400 hover:text-red-500 shadow-sm transition-colors"><Trash2 size={16} /></button>
+                            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Datum</label>
+                                <input type="date" className="w-full rounded-xl border-gray-200 border-2 p-3 focus:border-indigo-500 focus:ring-0 transition-colors" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})}/>
                             </div>
                         </div>
-                    ))}
-                 </div>
-            </div>
-        </div>
-    )
-  }
-
-  const renderSubjectDetail = () => {
-    if (!selectedSubjectId) return null;
-    const originalSubject = subjects.find(s => s.id === selectedSubjectId);
-    if (!originalSubject) return null;
-    
-    const subject = getEffectiveSubject(originalSubject);
-    const stats = calculateStats(subject);
-    const currentAvg = stats.avg !== null ? stats.avg.toFixed(2) : "-";
-    
-    // History
-    const historyData = subject.grades
-        .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .map((g, i) => {
-             const gradesUpToNow = subject.grades.filter(gr => new Date(gr.date) <= new Date(g.date));
-             const tempSubject = {...subject, grades: gradesUpToNow};
-             return {
-                 date: new Date(g.date).toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit'}),
-                 value: g.value,
-                 avg: calculateSubjectAverageRaw(tempSubject)
-             }
-        });
-
-    // Target Calc Logic
-    const calculateTarget = () => {
-        if(!targetGrade || stats.avg === null) return;
-        const target = parseFloat(targetGrade);
-        setTargetResult("Berechne...");
-        
-        // Simpel: Suche Note (KL, Gew. 1), die benötigt wird
-        for(let i = 0.5; i <= 6.0; i += 0.25) {
-             const simSub = { ...subject, grades: [...subject.grades, { id: 'temp', value: i, weight: 1, category: 'KL' } as Grade] };
-             const newAvg = calculateSubjectAverageRaw(simSub);
-             if(newAvg && (target < stats.avg ? newAvg <= target : newAvg >= target)) { // Unterstützt Verbesserung & Verschlechterung
-                 setTargetResult(`Eine ${i.toFixed(2)} (KL) würde reichen.`);
-                 return;
-             }
-        }
-        setTargetResult("Mit einer einzelnen Note schwer erreichbar.");
-    };
-
-    return (
-        <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-24">
-            {/* Header Card */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 relative overflow-hidden">
-                <div className={`absolute top-0 left-0 w-2 h-full ${subject.isCore ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pl-4">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-3xl font-bold text-gray-900">{subject.name}</h2>
-                            {isSimulationMode && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold border border-blue-200 animate-pulse">SIMULATION</span>}
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                            <button onClick={() => setIsAddModalOpen(false)} className="px-6 py-3 text-gray-600 font-medium hover:bg-gray-200 rounded-xl transition-colors">Abbrechen</button>
+                            <button onClick={() => { if(selectedSubjectId) { handleAddGrade(selectedSubjectId, { value: parseInt(formData.value), trend: formData.trend, type: formData.type, category: formData.category, weight: parseFloat(formData.weight), date: formData.date }); } }}
+                                className={`px-6 py-3 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 ${isSimulationMode ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-black hover:bg-gray-800 shadow-gray-300'}`}>
+                                <div className="flex items-center gap-2"><Icon name="Plus" size={16} className="text-white"/> {isSimulationMode ? 'Simulieren' : 'Speichern'}</div>
+                            </button>
                         </div>
-                        <span className={`inline-block mt-2 px-3 py-1 text-xs font-medium rounded-full ${subject.isCore ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                            {subject.isCore ? 'Kernfach' : 'Nebenfach'}
-                        </span>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Durchschnitt</p>
-                        <p className={`text-5xl font-black ${isSimulationMode ? 'text-blue-600' : parseFloat(currentAvg) <= 2.5 ? 'text-emerald-600' : parseFloat(currentAvg) <= 3.5 ? 'text-amber-500' : 'text-red-500'}`}>
-                            {currentAvg}
-                        </p>
                     </div>
                 </div>
-            </div>
+            )
+          }
+
+          const AddSubjectModal = () => {
+              const [name, setName] = useState('');
+              const [isCore, setIsCore] = useState(false);
+              const [isOpen, setIsOpen] = useState(false);
+
+              if (!isOpen) return (
+                <button onClick={() => setIsOpen(true)} className="w-full p-4 mt-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50 flex items-center justify-center gap-2 transition-all font-medium">
+                    <Icon name="Plus" size={20} className="text-gray-400 hover:text-indigo-500"/> Neues Fach hinzufügen
+                </button>
+              );
+
+              return (
+                <div className="mt-4 p-5 bg-white border border-gray-200 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <input autoFocus placeholder="Name (z.B. Chemie)" className="w-full p-3 border-2 border-gray-200 rounded-xl mb-3 focus:border-indigo-500 focus:outline-none transition-colors" value={name} onChange={e => setName(e.target.value)}/>
+                    <div className="flex items-center mb-4 bg-gray-50 p-3 rounded-xl cursor-pointer" onClick={() => setIsCore(!isCore)}>
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${isCore ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'}`}>
+                            {isCore && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                        </div>
+                        <label className="text-sm text-gray-700 font-medium cursor-pointer select-none">Kernfach (Schulaufgaben?)</label>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => { if(name) { handleAddSubject(name, isCore); setIsOpen(false); setName(''); setIsCore(false); } }} className="flex-1 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-colors">Erstellen</button>
+                        <button onClick={() => setIsOpen(false)} className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">Abbrechen</button>
+                    </div>
+                </div>
+              )
+          }
+
+          // --- Render Logic (using inline functions defined above) ---
+
+          const renderDashboard = () => {
+            const effectiveSubjects = subjects.map(s => getEffectiveSubject(s));
+            const validSubjects = effectiveSubjects.filter(s => calculateSubjectAverageRaw(s) !== null);
+            const overallSum = validSubjects.reduce((acc, s) => acc + (calculateSubjectAverageRaw(s) || 0), 0);
+            const totalAverage = validSubjects.length > 0 ? (overallSum / validSubjects.length).toFixed(2) : "-";
+
+            const radarData = effectiveSubjects.map(s => ({
+              subject: s.name,
+              A: calculateSubjectAverageRaw(s) || 0,
+              fullMark: 6
+            })).filter(d => d.A > 0);
             
-            {/* Split Stats */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm relative overflow-hidden">
-                    <p className="text-indigo-900/60 font-bold text-xs uppercase tracking-wider mb-1">Schulaufgaben (GL)</p>
-                    <p className="text-3xl font-bold text-indigo-900">{stats.glAvg ? stats.glAvg.toFixed(2) : "-"}</p>
-                    <p className="text-xs text-indigo-500 mt-2 font-medium">{subject.isCore ? 'Gewichtung x2' : 'Gewichtung x1'}</p>
-                </div>
-                <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm relative overflow-hidden">
-                    <p className="text-emerald-900/60 font-bold text-xs uppercase tracking-wider mb-1">Mündlich (KL)</p>
-                    <p className="text-3xl font-bold text-emerald-900">{stats.klAvg ? stats.klAvg.toFixed(2) : "-"}</p>
-                    <p className="text-xs text-emerald-500 mt-2 font-medium">Gewichtung x1</p>
-                </div>
-            </div>
+            const distribution = [0,0,0,0,0,0];
+            effectiveSubjects.forEach(s => s.grades.forEach(g => {
+                const val = Math.round(g.value);
+                if(val >= 1 && val <= 6) distribution[val-1]++;
+            }));
+            const maxCount = Math.max(...distribution);
+            const distData = distribution.map((count, i) => ({ name: (i+1).toString(), count, percentage: maxCount > 0 ? (count / maxCount) * 100 : 0 }));
 
-            {/* Target Calculator */}
-            <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-lg">
-                <div className="flex items-center gap-2 mb-4">
-                    <Target className="text-indigo-400" />
-                    <h3 className="font-bold">Noten-Zielrechner</h3>
-                </div>
-                <div className="flex gap-2">
-                    <input 
-                        type="number" 
-                        placeholder="Wunschschnitt (z.B. 2.0)" 
-                        className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 w-full"
-                        value={targetGrade}
-                        onChange={(e) => setTargetGrade(e.target.value)}
-                    />
-                    <button onClick={calculateTarget} className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl font-bold transition-colors">Berechnen</button>
-                </div>
-                {targetResult && <div className="mt-4 p-3 bg-gray-800 rounded-lg text-indigo-200 text-sm font-medium animate-in fade-in">{targetResult}</div>}
-            </div>
-
-             {/* History Chart */}
-             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-gray-800 mb-6">Verlauf in {subject.name}</h3>
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={historyData}>
-                            <defs>
-                                <linearGradient id="colorValSub" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
-                                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                            <XAxis dataKey="date" tick={{fontSize: 12, fill: '#9ca3af'}} axisLine={false} tickLine={false} dy={10} />
-                            <YAxis domain={[1, 6]} reversed hide />
-                            <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
-                            <Area type="monotone" dataKey="avg" stroke="#4F46E5" strokeWidth={3} fill="url(#colorValSub)" />
-                            <Line type="monotone" dataKey="value" stroke="#cbd5e1" strokeWidth={0} dot={{r: 4, fill: '#94a3b8'}} activeDot={{r: 6}} />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-             </div>
-
-            {/* Grade List */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-bold text-gray-800">Notenliste</h3>
-                    <button 
-                        onClick={() => setIsAddModalOpen(true)}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg ${isSimulationMode ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-black text-white hover:bg-gray-800'}`}
-                    >
-                        <Plus size={16} /> {isSimulationMode ? 'Simulieren' : 'Eintragen'}
-                    </button>
-                </div>
-                <div className="overflow-hidden rounded-xl border border-gray-100">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50/50 text-gray-500 font-medium">
-                            <tr>
-                                <th className="p-4 font-normal">Datum</th>
-                                <th className="p-4 font-normal">Typ</th>
-                                <th className="p-4 font-normal">Note</th>
-                                <th className="p-4 font-normal text-right"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                            {subject.grades.length === 0 && (
-                                <tr><td colSpan={4} className="p-8 text-center text-gray-400">Keine Noten vorhanden.</td></tr>
-                            )}
-                            {subject.grades.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(grade => (
-                                <tr key={grade.id} className={`group transition-colors ${grade.isSimulated ? 'bg-blue-50/50 hover:bg-blue-50' : 'hover:bg-gray-50'}`}>
-                                    <td className="p-4 text-gray-500">{new Date(grade.date).toLocaleDateString('de-DE')}</td>
-                                    <td className="p-4">
-                                        <div className="font-medium text-gray-900">{grade.type}</div>
-                                        <div className="text-xs text-gray-400 mt-0.5">{grade.category} • Gew. {grade.weight}</div>
-                                    </td>
-                                    <td className="p-4">
-                                        <span className={`font-bold text-lg ${grade.isSimulated ? 'text-blue-600' : 'text-gray-900'}`}>{grade.value}{grade.trend}</span>
-                                        {grade.isSimulated && <span className="ml-2 text-[10px] uppercase font-bold text-blue-400 border border-blue-200 px-1 rounded align-middle">Sim</span>}
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        <button onClick={() => handleDeleteGrade(subject.id, grade.id, !!grade.isSimulated)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-  };
-
-  const renderCertificate = () => {
-    // Wenn Simulation an ist, nutzen wir effectiveSubjects (mit simulierten Noten)
-    const displaySubjects = subjects.map(s => getEffectiveSubject(s));
-    
-    return (
-        <div className="animate-in zoom-in-95 duration-300 max-w-4xl mx-auto bg-white p-12 shadow-2xl border border-gray-200 mt-6 min-h-[900px] relative font-serif pb-24 print:shadow-none print:border-none">
-            {isSimulationMode && (
-                <div className="absolute top-0 right-0 left-0 bg-blue-100 text-blue-800 text-center py-2 text-xs font-bold uppercase tracking-widest border-b border-blue-200">
-                    Simulation - Nicht offiziell
-                </div>
-            )}
-            
-            {/* Decorative Header */}
-            <div className="absolute top-16 left-12 right-12 h-px bg-gray-900"></div>
-            <div className="absolute top-18 left-12 right-12 h-px bg-gray-900"></div>
-            
-            <div className="text-center mt-20 mb-16">
-                <h1 className="text-5xl text-gray-900 font-bold mb-4 uppercase tracking-widest font-serif">Zwischenzeugnis</h1>
-                <p className="text-gray-600 italic text-lg">Schuljahr {new Date().getFullYear()}/{new Date().getFullYear()+1}</p>
-                <p className="text-gray-400 text-sm mt-6 font-sans uppercase tracking-wider">Erstellt am {new Date().toLocaleDateString('de-DE')}</p>
-            </div>
-
-            <table className="w-full border-collapse mb-12">
-                <thead>
-                    <tr className="border-b-2 border-gray-900">
-                        <th className="text-left py-4 font-bold text-lg uppercase tracking-wide w-1/3">Fach</th>
-                        <th className="text-left py-4 font-bold text-lg uppercase tracking-wide w-1/2">Zusammensetzung</th>
-                        <th className="text-right py-4 font-bold text-lg uppercase tracking-wide">Note</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {displaySubjects.map(sub => {
-                        const stats = calculateStats(sub);
-                        const hasSimulated = sub.grades.some(g => g.isSimulated);
-                        return (
-                            <tr key={sub.id} className={`border-b border-gray-200 group hover:bg-gray-50 transition-colors ${hasSimulated ? 'bg-blue-50/30' : ''}`}>
-                                <td className="py-6 align-top">
-                                    <span className="font-bold text-xl block text-gray-900 font-serif">{sub.name}</span>
-                                    {sub.isCore && <span className="text-xs text-gray-500 font-sans uppercase tracking-wider mt-1 block">Kernfach</span>}
-                                    {hasSimulated && <span className="text-[10px] text-blue-600 font-sans uppercase font-bold tracking-wider mt-1 block">Inkl. Simulation</span>}
-                                </td>
-                                <td className="py-6 align-top font-sans text-sm text-gray-500">
-                                    {sub.grades.length > 0 ? (
-                                        sub.isCore ? (
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-8 font-bold text-indigo-600">GL:</span> 
-                                                    <span>Ø {stats.glAvg?.toFixed(2) || "-"}</span>
-                                                    <span className="text-gray-300">× 2</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-8 font-bold text-emerald-600">KL:</span> 
-                                                    <span>Ø {stats.klAvg?.toFixed(2) || "-"}</span>
-                                                    <span className="text-gray-300">× 1</span>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-gray-400">Ø</span> 
-                                                <span>Gesamt (Nebenfach)</span>
-                                            </div>
-                                        )
-                                    ) : <span className="text-gray-300 italic">Keine Noten</span>}
-                                </td>
-                                <td className="py-6 text-right align-top">
-                                    <span className={`font-bold text-3xl font-serif ${hasSimulated ? 'text-blue-700' : 'text-gray-900'}`}>{stats.avg !== null ? stats.avg.toFixed(2) : "-"}</span>
-                                </td>
-                            </tr>
-                        )
-                    })}
-                </tbody>
-            </table>
-
-            <div className="flex justify-end border-t-2 border-double border-gray-900 pt-8">
-                <div className="text-right">
-                    <span className="block text-sm uppercase tracking-wider text-gray-500 mb-2">Gesamtdurchschnitt</span>
-                    <span className={`text-5xl font-bold font-serif ${isSimulationMode ? 'text-blue-700' : 'text-gray-900'}`}>
-                        {(displaySubjects.reduce((acc, s) => acc + (calculateSubjectAverageRaw(s) || 0), 0) / displaySubjects.filter(s => calculateSubjectAverageRaw(s) !== null).length || 0).toFixed(2)}
-                    </span>
-                    {isSimulationMode && <span className="block text-xs text-blue-500 mt-2 font-sans font-bold uppercase tracking-widest">Simulierter Schnitt</span>}
-                </div>
-            </div>
-
-            <div className="mt-32 flex justify-between font-sans text-xs uppercase tracking-widest text-gray-400">
-                <div className="w-1/3 border-t border-gray-300 pt-4 text-center">
-                    Klassenleitung
-                </div>
-                <div className="w-1/3 border-t border-gray-300 pt-4 text-center">
-                    Erziehungsberechtigte
-                </div>
-            </div>
-        </div>
-    )
-  }
-
-  // --- Modals ---
-
-  const DeleteConfirmModal = () => {
-    if (!subjectToDelete) return null;
-    const sub = subjects.find(s => s.id === subjectToDelete);
-    return (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-white p-6 rounded-3xl shadow-xl max-w-sm w-full">
-                <h3 className="font-bold text-xl text-gray-900 mb-2">Fach löschen?</h3>
-                <p className="text-gray-500 mb-8">Möchtest du <b>{sub?.name}</b> wirklich löschen? Alle eingetragenen Noten gehen verloren.</p>
-                <div className="flex justify-end gap-3">
-                    <button onClick={() => setSubjectToDelete(null)} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors">Abbrechen</button>
-                    <button onClick={confirmDeleteSubject} className="px-5 py-2.5 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 shadow-lg shadow-red-200 transition-all transform hover:scale-105">Löschen</button>
-                </div>
-             </div>
-        </div>
-    );
-  };
-
-  const AddGradeModal = () => {
-    const [formData, setFormData] = useState({
-        value: '1',
-        trend: '' as Trend,
-        type: 'Schulaufgabe' as GradeType,
-        category: 'GL' as 'GL' | 'KL',
-        weight: '1',
-        date: new Date().toISOString().split('T')[0]
-    });
-
-    const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const t = e.target.value as GradeType;
-        const defaultCat = GRADE_TYPES.find(gt => gt.type === t)?.defaultCategory || 'KL';
-        setFormData({...formData, type: t, category: defaultCat});
-    }
-
-    return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className={`bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 border-4 ${isSimulationMode ? 'border-blue-500' : 'border-transparent'}`}>
-                <div className={`p-6 border-b flex justify-between items-center ${isSimulationMode ? 'bg-blue-50 border-blue-100' : 'bg-gray-50 border-gray-100'}`}>
+            return (
+              <div className="space-y-8 animate-in fade-in duration-500 pb-24">
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <h3 className="font-bold text-xl">{isSimulationMode ? 'Simulierte Note' : 'Neue Note'}</h3>
-                        {isSimulationMode && <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Wird nicht gespeichert</p>}
-                    </div>
-                    <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600 bg-white p-2 rounded-full shadow-sm">✕</button>
-                </div>
-                <div className="p-6 space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Note</label>
-                            <select 
-                                className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-lg"
-                                value={formData.value}
-                                onChange={e => setFormData({...formData, value: e.target.value})}
-                            >
-                                {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tendenz</label>
-                            <select 
-                                className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-lg"
-                                value={formData.trend}
-                                onChange={e => setFormData({...formData, trend: e.target.value as Trend})}
-                            >
-                                <option value="">glatt</option>
-                                <option value="+">+</option>
-                                <option value="-">-</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Art</label>
-                        <select 
-                             className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors"
-                             value={formData.type}
-                             onChange={handleTypeChange}
-                        >
-                            {GRADE_TYPES.map(gt => <option key={gt.type} value={gt.type}>{gt.label}</option>)}
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Kategorie</label>
-                            <select 
-                                className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors"
-                                value={formData.category}
-                                onChange={e => setFormData({...formData, category: e.target.value as any})}
-                            >
-                                <option value="GL">Groß (GL)</option>
-                                <option value="KL">Klein (KL)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Gewichtung</label>
-                            <select 
-                                className="w-full rounded-xl border-gray-200 border-2 p-3 bg-white focus:border-indigo-500 focus:ring-0 transition-colors"
-                                value={formData.weight}
-                                onChange={e => setFormData({...formData, weight: e.target.value})}
-                            >
-                                <option value="0.5">0.5 (z.B. Halbe)</option>
-                                <option value="1">1.0 (Standard)</option>
-                                <option value="2">2.0 (Doppelt)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="bg-indigo-50 p-4 rounded-xl flex gap-3 text-xs text-indigo-800 leading-relaxed">
-                        <Info size={16} className="flex-shrink-0 mt-0.5" />
-                        <p>
-                           <b>Info:</b> Schulaufgaben (GL) zählen in Kernfächern automatisch doppelt. Ändere die Gewichtung hier nur bei Besonderheiten (z.B. "Halbe Schulaufgabe").
-                        </p>
+                        <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Übersicht</h1>
+                        <p className="text-gray-500 mt-2 text-lg">Dein aktueller Leistungsstand.</p>
                     </div>
                     
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Datum</label>
-                        <input 
-                            type="date" 
-                            className="w-full rounded-xl border-gray-200 border-2 p-3 focus:border-indigo-500 focus:ring-0 transition-colors"
-                            value={formData.date}
-                            onChange={e => setFormData({...formData, date: e.target.value})}
-                        />
-                    </div>
-                </div>
-                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button onClick={() => setIsAddModalOpen(false)} className="px-6 py-3 text-gray-600 font-medium hover:bg-gray-200 rounded-xl transition-colors">Abbrechen</button>
-                    <button 
-                        onClick={() => {
-                            if(selectedSubjectId) {
-                                handleAddGrade(selectedSubjectId, {
-                                    value: parseInt(formData.value),
-                                    trend: formData.trend,
-                                    type: formData.type,
-                                    category: formData.category,
-                                    weight: parseFloat(formData.weight),
-                                    date: formData.date
-                                });
-                            }
-                        }}
-                        className={`px-6 py-3 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 ${isSimulationMode ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-black hover:bg-gray-800 shadow-gray-300'}`}
-                    >
-                        {isSimulationMode ? 'Simulieren' : 'Speichern'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    )
-  }
-
-  const AddSubjectModal = () => {
-      const [name, setName] = useState('');
-      const [isCore, setIsCore] = useState(false);
-      const [isOpen, setIsOpen] = useState(false);
-
-      if (!isOpen) return (
-        <button onClick={() => setIsOpen(true)} className="w-full p-4 mt-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50 flex items-center justify-center gap-2 transition-all font-medium">
-            <Plus size={20} /> Neues Fach hinzufügen
-        </button>
-      );
-
-      return (
-        <div className="mt-4 p-5 bg-white border border-gray-200 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
-            <input 
-                autoFocus
-                placeholder="Name (z.B. Chemie)"
-                className="w-full p-3 border-2 border-gray-200 rounded-xl mb-3 focus:border-indigo-500 focus:outline-none transition-colors"
-                value={name}
-                onChange={e => setName(e.target.value)}
-            />
-            <div className="flex items-center mb-4 bg-gray-50 p-3 rounded-xl cursor-pointer" onClick={() => setIsCore(!isCore)}>
-                <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${isCore ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'}`}>
-                    {isCore && <div className="w-2 h-2 bg-white rounded-full"></div>}
-                </div>
-                <label className="text-sm text-gray-700 font-medium cursor-pointer select-none">Kernfach (Schulaufgaben?)</label>
-            </div>
-            <div className="flex gap-2">
-                <button onClick={() => {
-                    if(name) { handleAddSubject(name, isCore); setIsOpen(false); setName(''); setIsCore(false); }
-                }} className="flex-1 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-colors">Erstellen</button>
-                <button onClick={() => setIsOpen(false)} className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">Abbrechen</button>
-            </div>
-        </div>
-      )
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-gray-900 selection:bg-indigo-100 selection:text-indigo-900">
-      {/* Sidebar */}
-      <aside className="w-20 lg:w-72 bg-white border-r border-gray-100 flex-shrink-0 flex flex-col h-screen sticky top-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-        <div className="p-8 flex items-center gap-4">
-           <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-200">
-               <GraduationCap size={20}/>
-           </div>
-           <span className="font-extrabold text-2xl tracking-tight hidden lg:block text-gray-900">NotenPro</span>
-        </div>
-        
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto scrollbar-hide">
-            <button 
-                onClick={() => { setActiveTab('dashboard'); setSelectedSubjectId(null); }}
-                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all group ${activeTab === 'dashboard' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
-            >
-                <LayoutDashboard size={22} className={activeTab === 'dashboard' ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'} />
-                <span className="hidden lg:block">Dashboard</span>
-            </button>
-            
-            <button 
-                onClick={() => { setActiveTab('analytics'); setSelectedSubjectId(null); }}
-                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all group ${activeTab === 'analytics' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
-            >
-                <BarChart3 size={22} className={activeTab === 'analytics' ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'} />
-                <span className="hidden lg:block">Statistiken</span>
-            </button>
-
-            <div className="pt-8 pb-4">
-                <p className="px-4 text-xs font-black text-gray-300 uppercase tracking-widest hidden lg:block">Deine Fächer</p>
-            </div>
-            
-            <div className="space-y-1">
-                {subjects.map(sub => (
-                    <div key={sub.id} className="group relative flex items-center">
+                    <div className="flex gap-4">
                          <button 
-                            onClick={() => { setActiveTab('subjects'); setSelectedSubjectId(sub.id); }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left group ${selectedSubjectId === sub.id ? 'bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)] text-gray-900 font-bold border border-gray-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
-                        >
-                            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-transform group-hover:scale-125 ${sub.isCore ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]'}`}></span>
-                            <span className="hidden lg:block truncate">{sub.name}</span>
-                        </button>
+                            onClick={() => setIsSimulationMode(!isSimulationMode)}
+                            className={`px-5 py-3 rounded-xl flex items-center gap-2 font-bold transition-all shadow-sm ${isSimulationMode ? 'bg-blue-600 text-white shadow-blue-200 ring-2 ring-blue-500 ring-offset-2' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
+                         >
+                            <Icon name="FlaskConical" size={20} className={isSimulationMode ? 'text-white animate-pulse' : 'text-gray-700'} /> 
+                            {isSimulationMode ? 'Simulation beenden' : 'Simulation starten'}
+                         </button>
+
+                        <div className={`px-6 py-3 rounded-xl shadow-sm border flex items-center gap-4 transition-colors ${isSimulationMode ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
+                            <div>
+                                <span className="text-xs text-gray-400 uppercase font-bold tracking-wider block">Gesamtschnitt</span>
+                                <span className={`text-3xl font-black ${isSimulationMode ? 'text-blue-600' : parseFloat(totalAverage) <= 2.0 ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                                    {totalAverage}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                ))}
-            </div>
+                </header>
+
+                {isSimulationMode && (
+                     <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-2xl flex items-center justify-between shadow-xl shadow-blue-200/50">
+                         <div className="flex items-center gap-4">
+                            <div className="bg-white/20 p-3 rounded-xl"><Icon name="FlaskConical" size={28} className="text-white"/></div>
+                            <div>
+                                <p className="font-bold text-lg">Simulationsmodus aktiv</p>
+                                <p className="text-blue-100 text-sm">Du kannst jetzt fächerübergreifend "Was-wäre-wenn" Noten hinzufügen. Das Zeugnis wird automatisch angepasst.</p>
+                            </div>
+                         </div>
+                     </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 lg:col-span-2">
+                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                            <Icon name="TrendingUp" size={20} className="text-indigo-500"/> Fächer-Profil
+                        </h3>
+                        <div className="h-80 w-full flex items-center justify-center">
+                           {/* Simplified Radar Chart Replacement */}
+                           {radarData.length > 2 ? (
+                            <svg viewBox="-10 -10 120 120" className="w-full h-full max-w-sm">
+                                <g transform="translate(50, 50)">
+                                    <circle r="45" className="stroke-gray-200 fill-gray-50/50" strokeWidth="1"/>
+                                    <circle r="30" className="stroke-gray-200 fill-transparent" strokeWidth="1"/>
+                                    <circle r="15" className="stroke-gray-200 fill-transparent" strokeWidth="1"/>
+                                    
+                                    {/* Draw axes and labels */}
+                                    {radarData.map((d, i) => {
+                                        const angle = (i / radarData.length) * 2 * Math.PI - (Math.PI / 2);
+                                        const x = 50 * Math.cos(angle);
+                                        const y = 50 * Math.sin(angle);
+                                        return (
+                                            <g key={i}>
+                                                <line x1="0" y1="0" x2={x} y2={y} className="stroke-gray-300" strokeWidth="0.5"/>
+                                                <text x={x * 1.1} y={y * 1.1} className="text-xs fill-gray-600 font-medium" textAnchor={x > 0 ? 'start' : 'end'} dominantBaseline={y > 0 ? 'hanging' : 'auto'}>{d.subject}</text>
+                                            </g>
+                                        );
+                                    })}
+
+                                    {/* Draw data polygon (reversed scale: 1=best, 6=worst) */}
+                                    <polygon points={radarData.map((d, i) => {
+                                        // Ensure A is not null/NaN before calculation
+                                        const scoreValue = d.A || 6; 
+                                        const score = 1 - (scoreValue - 1) / 5; // Scale 1 (Note 1) to 0 (Note 6) => 0 to 1
+                                        const r = score * 45; // Radius scaled 0 to 45
+                                        const angle = (i / radarData.length) * 2 * Math.PI - (Math.PI / 2);
+                                        const x = r * Math.cos(angle);
+                                        const y = r * Math.sin(angle);
+                                        return `${x},${y}`;
+                                    }).join(' ')} 
+                                        className={`fill-current ${isSimulationMode ? 'text-blue-500' : 'text-indigo-500'}`} 
+                                        fillOpacity="0.3" stroke="currentColor" strokeWidth="2"
+                                    />
+                                </g>
+                            </svg>
+                           ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 p-4">
+                                    <Icon name="BarChart3" size={48} className="mb-4 opacity-20 text-gray-400" />
+                                    <p>Zu wenige Daten. Füge Noten in mindestens 3 Fächern hinzu.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100">
+                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                            <Icon name="BarChart3" size={20} className="text-emerald-500"/> Notenspiegel
+                        </h3>
+                        <div className="h-80 w-full flex items-end">
+                            {distData.length > 0 && (
+                                <div className="flex justify-around w-full h-full items-end p-4">
+                                    {distData.map((d, i) => (
+                                        <div key={d.name} className="flex flex-col items-center h-full justify-end w-12">
+                                            <span className="text-xs font-bold mb-1 text-gray-700">{d.count > 0 ? d.count : ''}</span>
+                                            <div style={{height: `${d.percentage}%`}} 
+                                                className={`w-8 rounded-t-lg transition-all duration-500 ease-out shadow-md ${i < 2 ? 'bg-emerald-500' : i < 4 ? 'bg-amber-500' : 'bg-red-500'}`}>
+                                            </div>
+                                            <span className="text-sm font-medium mt-1 text-gray-500">{d.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+              </div>
+            );
+          };
+
+          const renderAnalytics = () => {
+            const effectiveSubjects = subjects.map(s => getEffectiveSubject(s));
             
-            <AddSubjectModal />
-        </nav>
+            // 1. Global Grade History Calculation
+            const allDates = Array.from(new Set(effectiveSubjects.flatMap(s => s.grades.map(g => g.date)))).sort();
+            const globalHistoryData = allDates.map(date => {
+                const currentDate = new Date(date);
+                const subjectAvgs = effectiveSubjects.map(sub => {
+                    const gradesAtDate = sub.grades.filter(g => new Date(g.date) <= currentDate);
+                    if (gradesAtDate.length === 0) return null;
+                    return calculateSubjectAverageRaw({...sub, grades: gradesAtDate});
+                }).filter(val => val !== null);
+                if (subjectAvgs.length === 0) return null;
+                const globalAvg = subjectAvgs.reduce((a, b) => a + b, 0) / subjectAvgs.length;
+                return { date: currentDate.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit'}), avg: parseFloat(globalAvg.toFixed(2)) };
+            }).filter(d => d !== null);
 
-        <div className="p-4 border-t border-gray-50">
-             <button 
-                onClick={() => { setActiveTab('certificate'); setSelectedSubjectId(null); }}
-                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all border border-transparent ${activeTab === 'certificate' ? 'bg-amber-50 text-amber-700 font-bold border-amber-100' : 'text-gray-500 hover:bg-white hover:shadow-lg hover:text-gray-900 hover:border-gray-100'}`}
-            >
-                <FileText size={22} className={activeTab === 'certificate' ? 'text-amber-600' : 'text-gray-400'} />
-                <span className="hidden lg:block">Zeugnis</span>
-            </button>
-        </div>
-      </aside>
+            // 2. GL vs KL Comparison
+            const allGlGrades = effectiveSubjects.flatMap(s => s.grades.filter(g => g.category === 'GL'));
+            const allKlGrades = effectiveSubjects.flatMap(s => s.grades.filter(g => g.category === 'KL'));
+            const calcGroupAvg = (grades) => {
+                if (!grades.length) return 0;
+                const sum = grades.reduce((acc, g) => acc + (g.value * g.weight), 0);
+                const weight = grades.reduce((acc, g) => acc + g.weight, 0);
+                return weight ? parseFloat((sum/weight).toFixed(2)) : 0;
+            };
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 lg:p-10 overflow-y-auto h-screen scroll-smooth">
-        <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && renderDashboard()}
-            {activeTab === 'analytics' && renderAnalytics()}
-            {selectedSubjectId && renderSubjectDetail()}
-            {activeTab === 'certificate' && renderCertificate()}
-        </div>
-      </main>
+            const glAvg = calcGroupAvg(allGlGrades);
+            const klAvg = calcGroupAvg(allKlGrades);
+            const glKlData = [
+                { name: 'Schriftlich (GL)', avg: glAvg, count: allGlGrades.length, color: '#4F46E5' },
+                { name: 'Mündlich/Klein (KL)', avg: klAvg, count: allKlGrades.length, color: '#10B981' }
+            ];
 
-      {isAddModalOpen && <AddGradeModal />}
-      <DeleteConfirmModal />
-    </div>
-  );
-}
+            // 3. Best vs Worst Trend (Simple)
+            const trendData = effectiveSubjects.map(sub => {
+                const sortedGrades = [...sub.grades].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                const recentGrades = sortedGrades.slice(0, 3);
+                const overallAvg = calculateSubjectAverageRaw(sub) || 0;
+                if (recentGrades.length === 0) return { name: sub.name, change: 0, current: 0 };
+                const recentAvg = calculateStats({...sub, grades: recentGrades}).avg || overallAvg;
+                const diff = overallAvg - recentAvg; 
+                return { name: sub.name, change: diff, current: overallAvg };
+            }).filter(d => d.current > 0).sort((a,b) => b.change - a.change); 
+
+            const bestImprovement = trendData.length > 0 ? trendData[0] : null;
+            const worstDecline = trendData.length > 0 ? trendData[trendData.length - 1] : null;
+
+
+            return (
+                <div className="space-y-8 animate-in fade-in duration-300 pb-24">
+                     <div>
+                        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">Statistik-Zentrale</h1>
+                        <p className="text-gray-500">Detaillierte Analyse deiner Leistungen.</p>
+                    </div>
+
+                    {/* 1. Global History Chart (Simplified SVG Line Chart) */}
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                        <div className="mb-6">
+                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <Icon name="TrendingUp" className="text-blue-500" /> Verlauf deines Gesamtschnitts
+                            </h3>
+                            <p className="text-gray-500 text-sm">Entwicklung über alle Fächer hinweg</p>
+                        </div>
+                        <div className="h-80 w-full relative">
+                            {globalHistoryData.length > 1 ? (
+                                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    {/* Grid Lines */}
+                                    {[1, 2, 3, 4, 5].map(note => {
+                                        const y = 100 - ((note - 1) * 20);
+                                        return <line key={note} x1="0" y1={y} x2="100" y2={y} className="stroke-gray-200" strokeWidth="0.5"/>
+                                    })}
+                                    <text x="1" y="99" className="text-[4px] fill-gray-500">Note 1</text>
+                                    <text x="1" y="1" className="text-[4px] fill-gray-500">Note 6</text>
+                                    
+                                    {/* Data Line */}
+                                    <polyline fill="none" stroke="#3b82f6" strokeWidth="1" 
+                                        points={globalHistoryData.map((d, i) => {
+                                            const x = (i / (globalHistoryData.length - 1)) * 100;
+                                            const y = 100 - ((d.avg - 1) / 5) * 100; // Scale 1 to 6 (y=0 to y=100)
+                                            return `${x},${y}`;
+                                        }).join(' ')} 
+                                    />
+                                    {/* Data Points */}
+                                    {globalHistoryData.map((d, i) => {
+                                        const x = globalHistoryData.length > 1 ? (i / (globalHistoryData.length - 1)) * 100 : 50; // Fix if only one point
+                                        const y = 100 - ((d.avg - 1) / 5) * 100;
+                                        return (
+                                            <g key={i}>
+                                                <circle cx={x} cy={y} r="1" className="fill-blue-500 stroke-white stroke-0.5" />
+                                                <text x={x} y={y - 2} textAnchor="middle" className="text-[3px] fill-gray-700 font-bold">{d.avg}</text>
+                                            </g>
+                                        );
+                                    })}
+                                </svg>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-gray-400">Nicht genug Daten für den Verlauf.</div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* 2. GL vs KL Comparison (Simplified Div Bar Chart) */}
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 md:col-span-2">
+                            <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                <Icon name="FileText" size={20} className="text-indigo-500"/> Schriftlich vs. Mündlich
+                            </h3>
+                            <div className="space-y-4">
+                                {glKlData.map(d => {
+                                    const percentage = (6 - d.avg) / 5 * 100; // Scale (1=100%, 6=0%)
+                                    return (
+                                        <div key={d.name} className="flex flex-col">
+                                            <div className="flex justify-between text-sm font-medium mb-1">
+                                                <span className={d.color === '#4F46E5' ? 'text-indigo-700' : 'text-emerald-700'}>{d.name} ({d.count} Noten)</span>
+                                                <span className="font-bold text-gray-800">{d.avg > 0 ? d.avg : '-'} Ø</span>
+                                            </div>
+                                            <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                                                <div style={{width: `${percentage}%`}} 
+                                                    className={`h-full rounded-full transition-all duration-500 ${d.color === '#4F46E5' ? 'bg-indigo-500' : 'bg-emerald-500'}`}>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between text-xs text-gray-400 mt-1"><span>1.0</span><span>6.0</span></div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 3. Winners & Losers */}
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-center md:col-span-2">
+                            <h3 className="text-lg font-bold text-gray-800 mb-6">Aktuelle Trends (letzte 3 Noten)</h3>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                {bestImprovement && bestImprovement.change > 0 ? (
+                                    <div className="flex flex-col items-start gap-2 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                                        <div className="flex items-center gap-2 text-emerald-600 font-bold"><Icon name="TrendingUp" size={20} className="text-emerald-600"/> Aufsteiger</div>
+                                        <p className="text-2xl font-bold text-gray-900">{bestImprovement.name}</p>
+                                        <p className="text-xs text-emerald-700 mt-1">Verbesserung: {bestImprovement.change.toFixed(2)} Punkte</p>
+                                    </div>
+                                ) : <div className="flex items-center justify-center p-4 text-gray-400">Keine klare Verbesserung.</div>}
+
+                                {worstDecline && worstDecline.change < 0 ? (
+                                    <div className="flex flex-col items-start gap-2 bg-red-50 p-4 rounded-2xl border border-red-100">
+                                        <div className="flex items-center gap-2 text-red-600 font-bold"><Icon name="TrendingDown" size={20} className="text-red-600"/> Absteiger</div>
+                                        <p className="text-2xl font-bold text-gray-900">{worstDecline.name}</p>
+                                        <p className="text-xs text-red-700 mt-1">Verschlechterung: {Math.abs(worstDecline.change).toFixed(2)} Punkte</p>
+                                    </div>
+                                ) : <div className="flex items-center justify-center p-4 text-gray-400">Kein klarer Abfall.</div>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+          };
+
+          const renderSubjectDetail = () => {
+            if (!selectedSubjectId) return null;
+            const originalSubject = subjects.find(s => s.id === selectedSubjectId);
+            if (!originalSubject) return null;
+            
+            const subject = getEffectiveSubject(originalSubject);
+            const stats = calculateStats(subject);
+            const currentAvg = stats.avg !== null ? stats.avg.toFixed(2) : "-";
+            
+            const historyData = subject.grades
+                .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .map((g, i) => {
+                     const gradesUpToNow = subject.grades.filter(gr => new Date(gr.date) <= new Date(g.date));
+                     const tempSubject = {...subject, grades: gradesUpToNow};
+                     return {
+                         date: new Date(g.date).toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit'}),
+                         value: g.value,
+                         avg: calculateStats(tempSubject).avg
+                     }
+                });
+
+            return (
+                <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-24">
+                    {/* Header Card */}
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 relative overflow-hidden">
+                        <div className={`absolute top-0 left-0 w-2 h-full ${subject.isCore ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pl-4">
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-3xl font-bold text-gray-900">{subject.name}</h2>
+                                    {isSimulationMode && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold border border-blue-200 animate-pulse">SIMULATION</span>}
+                                </div>
+                                <span className={`inline-block mt-2 px-3 py-1 text-xs font-medium rounded-full ${subject.isCore ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                    {subject.isCore ? 'Kernfach' : 'Nebenfach'}
+                                </span>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Durchschnitt</p>
+                                <p className={`text-5xl font-black ${isSimulationMode ? 'text-blue-600' : parseFloat(currentAvg) <= 2.5 ? 'text-emerald-600' : parseFloat(currentAvg) <= 3.5 ? 'text-amber-500' : 'text-red-500'}`}>
+                                    {currentAvg}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Split Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm relative overflow-hidden">
+                            <p className="text-indigo-900/60 font-bold text-xs uppercase tracking-wider mb-1">Schulaufgaben (GL)</p>
+                            <p className="text-3xl font-bold text-indigo-900">{stats.glAvg ? stats.glAvg.toFixed(2) : "-"}</p>
+                            <p className="text-xs text-indigo-500 mt-2 font-medium">{subject.isCore ? 'Gewichtung x2' : 'Gewichtung x1'}</p>
+                        </div>
+                        <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm relative overflow-hidden">
+                            <p className="text-emerald-900/60 font-bold text-xs uppercase tracking-wider mb-1">Mündlich (KL)</p>
+                            <p className="text-3xl font-bold text-emerald-900">{stats.klAvg ? stats.klAvg.toFixed(2) : "-"}</p>
+                            <p className="text-xs text-emerald-500 mt-2 font-medium">Gewichtung x1</p>
+                        </div>
+                    </div>
+
+                    {/* Target Calculator */}
+                    <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-lg">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Icon name="Target" className="text-indigo-400" />
+                            <h3 className="font-bold">Noten-Zielrechner</h3>
+                        </div>
+                        <div className="flex gap-2">
+                            <input type="number" placeholder="Wunschschnitt (z.B. 2.0)" 
+                                className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 w-full"
+                                value={targetGrade} onChange={(e) => setTargetGrade(e.target.value)}
+                            />
+                            <button onClick={() => calculateTarget(subject, stats)} className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl font-bold transition-colors">Berechnen</button>
+                        </div>
+                        {targetResult && <div className="mt-4 p-3 bg-gray-800 rounded-lg text-indigo-200 text-sm font-medium animate-in fade-in">{targetResult}</div>}
+                    </div>
+
+                     {/* History Chart (Simplified SVG Area Chart) */}
+                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                        <h3 className="font-bold text-gray-800 mb-6">Verlauf in {subject.name}</h3>
+                         <div className="h-64 w-full relative">
+                            {historyData.length > 0 ? (
+                                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    {/* Grid Lines */}
+                                    {[1, 2, 3, 4, 5].map(note => {
+                                        const y = 100 - ((note - 1) * 20);
+                                        return <line key={note} x1="0" y1={y} x2="100" y2={y} className="stroke-gray-200" strokeWidth="0.5"/>
+                                    })}
+
+                                    {/* Area Path */}
+                                    <path fill="#4F46E5" fillOpacity="0.1"
+                                        d={`M 0 100 L ${historyData.map((d, i) => {
+                                            const x = historyData.length > 1 ? (i / (historyData.length - 1)) * 100 : 50;
+                                            const y = 100 - ((d.avg - 1) / 5) * 100;
+                                            return `${x} ${y}`;
+                                        }).join(' L ')} L 100 100 Z`}
+                                    />
+                                    {/* Line Path */}
+                                    <polyline fill="none" stroke="#4F46E5" strokeWidth="2" 
+                                        points={historyData.map((d, i) => {
+                                            const x = historyData.length > 1 ? (i / (historyData.length - 1)) * 100 : 50;
+                                            const y = 100 - ((d.avg - 1) / 5) * 100;
+                                            return `${x},${y}`;
+                                        }).join(' ')} 
+                                    />
+                                     {/* Data Points */}
+                                    {historyData.map((d, i) => {
+                                        const x = historyData.length > 1 ? (i / (historyData.length - 1)) * 100 : 50;
+                                        const y = 100 - ((d.avg - 1) / 5) * 100;
+                                        return (
+                                            <circle key={i} cx={x} cy={y} r="1" className="fill-indigo-500 stroke-white stroke-0.5" />
+                                        );
+                                    })}
+                                </svg>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-gray-400">Noch keine Noten eingetragen.</div>
+                            )}
+                        </div>
+                     </div>
+
+                    {/* Grade List */}
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-gray-800">Notenliste</h3>
+                            <button onClick={() => setIsAddModalOpen(true)} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg ${isSimulationMode ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-black text-white hover:bg-gray-800'}`}>
+                                <Icon name="Plus" size={16} className="text-white" /> {isSimulationMode ? 'Simulieren' : 'Eintragen'}
+                            </button>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-gray-100">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50/50 text-gray-500 font-medium"><tr><th className="p-4 font-normal">Datum</th><th className="p-4 font-normal">Typ</th><th className="p-4 font-normal">Note</th><th className="p-4 font-normal text-right"></th></tr></thead>
+                                <tbody className="divide-y divide-gray-100 bg-white">
+                                    {subject.grades.length === 0 && (<tr><td colSpan={4} className="p-8 text-center text-gray-400">Keine Noten vorhanden.</td></tr>)}
+                                    {subject.grades.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(grade => (<tr key={grade.id} className={`group transition-colors ${grade.isSimulated ? 'bg-blue-50/50 hover:bg-blue-50' : 'hover:bg-gray-50'}`}>
+                                            <td className="p-4 text-gray-500">{new Date(grade.date).toLocaleDateString('de-DE')}</td>
+                                            <td className="p-4"><div className="font-medium text-gray-900">{grade.type}</div><div className="text-xs text-gray-400 mt-0.5">{grade.category} • Gew. {grade.weight}</div></td>
+                                            <td className="p-4"><span className={`font-bold text-lg ${grade.isSimulated ? 'text-blue-600' : 'text-gray-900'}`}>{grade.value}{grade.trend}</span>
+                                                {grade.isSimulated && <span className="ml-2 text-[10px] uppercase font-bold text-blue-400 border border-blue-200 px-1 rounded align-middle">Sim</span>}
+                                            </td>
+                                            <td className="p-4 text-right"><button onClick={() => handleDeleteGrade(subject.id, grade.id, !!grade.isSimulated)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Icon name="Trash2" size={16} /></button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+          };
+          
+          const renderCertificate = () => {
+              const displaySubjects = subjects.map(s => getEffectiveSubject(s));
+              const totalAvg = (displaySubjects.reduce((acc, s) => acc + (calculateSubjectAverageRaw(s) || 0), 0) / displaySubjects.filter(s => calculateSubjectAverageRaw(s) !== null).length || 0).toFixed(2);
+              return (
+                  <div className="animate-in zoom-in-95 duration-300 max-w-4xl mx-auto bg-white p-12 shadow-2xl border border-gray-200 mt-6 min-h-[900px] relative font-serif pb-24 print:shadow-none print:border-none">
+                      {isSimulationMode && (<div className="absolute top-0 right-0 left-0 bg-blue-100 text-blue-800 text-center py-2 text-xs font-bold uppercase tracking-widest border-b border-blue-200">Simulation - Nicht offiziell</div>)}
+                      
+                      <div className="absolute top-16 left-12 right-12 h-px bg-gray-900"></div>
+                      <div className="absolute top-18 left-12 right-12 h-px bg-gray-900"></div>
+                      
+                      <div className="text-center mt-20 mb-16">
+                          <h1 className="text-5xl text-gray-900 font-bold mb-4 uppercase tracking-widest font-serif">Zwischenzeugnis</h1>
+                          <p className="text-gray-600 italic text-lg">Schuljahr {new Date().getFullYear()}/{new Date().getFullYear()+1}</p>
+                          <p className="text-gray-400 text-sm mt-6 font-sans uppercase tracking-wider">Erstellt am {new Date().toLocaleDateString('de-DE')}</p>
+                      </div>
+
+                      <table className="w-full border-collapse mb-12">
+                          <thead><tr className="border-b-2 border-gray-900"><th className="text-left py-4 font-bold text-lg uppercase tracking-wide w-1/3">Fach</th><th className="text-left py-4 font-bold text-lg uppercase tracking-wide w-1/2">Zusammensetzung</th><th className="text-right py-4 font-bold text-lg uppercase tracking-wide">Note</th></tr></thead>
+                          <tbody>
+                              {displaySubjects.map(sub => {
+                                  const stats = calculateStats(sub);
+                                  const hasSimulated = sub.grades.some(g => g.isSimulated);
+                                  return (<tr key={sub.id} className={`border-b border-gray-200 group hover:bg-gray-50 transition-colors ${hasSimulated ? 'bg-blue-50/30' : ''}`}><td className="py-6 align-top">
+                                          <span className="font-bold text-xl block text-gray-900 font-serif">{sub.name}</span>
+                                          {sub.isCore && <span className="text-xs text-gray-500 font-sans uppercase tracking-wider mt-1 block">Kernfach</span>}
+                                          {hasSimulated && <span className="text-[10px] text-blue-600 font-sans uppercase font-bold tracking-wider mt-1 block">Inkl. Simulation</span>}
+                                      </td><td className="py-6 align-top font-sans text-sm text-gray-500">
+                                          {sub.grades.length > 0 ? (sub.isCore ? (<div className="flex flex-col gap-1"><div className="flex items-center gap-2"><span className="w-8 font-bold text-indigo-600">GL:</span> <span>Ø {stats.glAvg?.toFixed(2) || "-"}</span><span className="text-gray-300">× 2</span></div><div className="flex items-center gap-2"><span className="w-8 font-bold text-emerald-600">KL:</span> <span>Ø {stats.klAvg?.toFixed(2) || "-"}</span><span className="text-gray-300">× 1</span></div></div>) : (<div className="flex items-center gap-2"><span className="font-bold text-gray-400">Ø</span> <span>Gesamt (Nebenfach)</span></div>)) : <span className="text-gray-300 italic">Keine Noten</span>}
+                                      </td><td className="py-6 text-right align-top">
+                                          <span className={`font-bold text-3xl font-serif ${hasSimulated ? 'text-blue-700' : 'text-gray-900'}`}>{stats.avg !== null ? stats.avg.toFixed(2) : "-"}</span>
+                                      </td>
+                                  </tr>)
+                              })}
+                          </tbody>
+                      </table>
+
+                      <div className="flex justify-end border-t-2 border-double border-gray-900 pt-8">
+                          <div className="text-right">
+                              <span className="block text-sm uppercase tracking-wider text-gray-500 mb-2">Gesamtdurchschnitt</span>
+                              <span className={`text-5xl font-bold font-serif ${isSimulationMode ? 'text-blue-700' : 'text-gray-900'}`}>{totalAvg}</span>
+                              {isSimulationMode && <span className="block text-xs text-blue-500 mt-2 font-sans font-bold uppercase tracking-widest">Simulierter Schnitt</span>}
+                          </div>
+                      </div>
+
+                      <div className="mt-32 flex justify-between font-sans text-xs uppercase tracking-widest text-gray-400">
+                          <div className="w-1/3 border-t border-gray-300 pt-4 text-center">Klassenleitung</div>
+                          <div className="w-1/3 border-t border-gray-300 pt-4 text-center">Erziehungsberechtigte</div>
+                      </div>
+                  </div>
+              )
+          }
+
+          // --- App Shell ---
+          return (
+            <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-gray-900">
+              <aside className="w-20 lg:w-72 bg-white border-r border-gray-100 flex-shrink-0 flex flex-col h-screen sticky top-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+                <div className="p-8 flex items-center gap-4">
+                   <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-200">
+                       <Icon name="GraduationCap" size={20} className="text-white"/>
+                   </div>
+                   <span className="font-extrabold text-2xl tracking-tight hidden lg:block text-gray-900">NotenPro</span>
+                </div>
+                
+                <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto scrollbar-hide">
+                    {/* Navigation Buttons */}
+                    {[['dashboard', 'Dashboard', 'LayoutDashboard'], ['analytics', 'Statistiken', 'BarChart3']].map(([tab, label, icon]) => (
+                        <button key={tab} onClick={() => { setActiveTab(tab); setSelectedSubjectId(null); }}
+                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all group ${activeTab === tab ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}>
+                            <Icon name={icon} size={22} className={activeTab === tab ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'} />
+                            <span className="hidden lg:block">{label}</span>
+                        </button>
+                    ))}
+                    
+                    <div className="pt-8 pb-4"><p className="px-4 text-xs font-black text-gray-300 uppercase tracking-widest hidden lg:block">Deine Fächer</p></div>
+                    
+                    <div className="space-y-1">
+                        {subjects.map(sub => (
+                            <div key={sub.id} className="group relative flex items-center">
+                                 <button onClick={() => { setActiveTab('subjects'); setSelectedSubjectId(sub.id); }}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left group ${selectedSubjectId === sub.id ? 'bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)] text-gray-900 font-bold border border-gray-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}>
+                                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-transform group-hover:scale-125 ${sub.isCore ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]'}`}></span>
+                                    <span className="hidden lg:block truncate">{sub.name}</span>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <AddSubjectModal />
+                </nav>
+
+                <div className="p-4 border-t border-gray-50">
+                     <button onClick={() => { setActiveTab('certificate'); setSelectedSubjectId(null); }}
+                        className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all border border-transparent ${activeTab === 'certificate' ? 'bg-amber-50 text-amber-700 font-bold border-amber-100' : 'text-gray-500 hover:bg-white hover:shadow-lg hover:text-gray-900 hover:border-gray-100'}`}
+                    >
+                        <Icon name="FileText" size={22} className={activeTab === 'certificate' ? 'text-amber-600' : 'text-gray-400'} />
+                        <span className="hidden lg:block">Zeugnis</span>
+                    </button>
+                </div>
+              </aside>
+
+              <main className="flex-1 p-4 lg:p-10 overflow-y-auto h-screen scroll-smooth">
+                <div className="max-w-7xl mx-auto">
+                    {activeTab === 'dashboard' && renderDashboard()}
+                    {activeTab === 'analytics' && renderAnalytics()}
+                    {selectedSubjectId && renderSubjectDetail()}
+                    {activeTab === 'certificate' && renderCertificate()}
+                </div>
+              </main>
+
+              {isAddModalOpen && <AddGradeModal />}
+              <DeleteConfirmModal />
+            </div>
+          );
+        }
+
+        // --- RENDER APP ---
+        // React 18 Fix: ReactDOM.render -> createRoot
+        const root = createRoot(document.getElementById('root'));
+        root.render(<GradeManagerApp />);
+
+    </script>
+</body>
+</html>
